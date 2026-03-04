@@ -1,0 +1,63 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Student {
+  id            Int      @id @default(autoincrement())
+  rollNo        String   @unique
+  name          String
+  batch         String?
+  mess          String?
+  hostel        String?
+  email         String?  @unique
+  bankAccountNo String?
+  bankName      String?
+  ifsc          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  isBankEditable Boolean  @default(true)
+  openingBalance Float    @default(0)
+  bills         Bill[]
+  rebates       Rebate[]
+}
+
+model Bill {
+  id          Int      @id @default(autoincrement())
+  month       String
+  year        Int
+  totalDays   Int
+  ratePerDay  Float
+  totalAmount Float
+  isPaid      Boolean  @default(false)
+  generatedAt DateTime @default(now())
+  studentId   Int
+  student     Student  @relation(fields: [studentId], references: [id])
+
+  @@unique([studentId, month, year])
+}
+
+model Rebate {
+  id        Int      @id @default(autoincrement())
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  studentId Int
+  student   Student  @relation(fields: [studentId], references: [id])
+}
+
+model Mess {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  baseRate  Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

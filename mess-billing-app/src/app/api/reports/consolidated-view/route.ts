@@ -3,51 +3,49 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
-
-    // Default to current year/sem if not provided, but for now let's just fetch all bills
-    // In a real app, parsing start/end range is needed.
-    // Let's assume the frontend asks for a specific range or we return "Current Semester" by default.
-    // For simplicity, we fetch all bills for now to populate the view.
+    const sessionId = searchParams.get('sessionId');
 
     try {
         const students = await prisma.student.findMany({
             include: {
-                bills: true,
-                // mess: true // mess is a string name, not a relation in this schema version
+                course: true,
+                messAssignments: {
+                    include: { mess: true, session: true },
+                    ...(sessionId ? { where: { sessionId: Number(sessionId) } } : {})
+                },
+                monthlyRebates: {
+                    include: { session: true },
+                    ...(sessionId ? { where: { sessionId: Number(sessionId) } } : {})
+                },
+                feesDeposited: {
+                    include: { session: true },
+                    ...(sessionId ? { where: { sessionId: Number(sessionId) } } : {})
+                },
             },
-            orderBy: {
-                rollNo: 'asc'
-            }
+            orderBy: { rollNo: 'asc' }
         });
 
-        // Transform data
         const reportData = students.map(s => {
-            const bills = s.bills;
-            const totalBilled = bills.reduce((sum, b) => sum + b.totalAmount, 0);
-
-            // Refund logic is custom, usually rebate is a reduction in bill, but if "Refund Process" is separate:
-            // For now, hardcode 0 or derive from something else.
-            const refund = 0;
+            const totalFees = s.feesDeposited.reduce((sum, f) => sum + f.amount, 0);
+            const totalRebateDays = s.monthlyRebates.reduce((sum, r) => sum + r.rebateDays, 0);
+            const currentAssignment = s.messAssignments[0];
 
             return {
                 id: s.id,
                 rollNo: s.rollNo,
                 name: s.name,
                 batch: s.batch,
-                mess: s.mess,
+                course: s.course?.name,
+                mess: currentAssignment?.mess?.name || '-',
                 hostel: s.hostel,
                 bankAccountNo: s.bankAccountNo,
                 bankName: s.bankName,
                 ifsc: s.ifsc,
-                feeCollected: s.openingBalance || 0,
-                bills: bills.map(b => ({
-                    month: b.month,
-                    year: b.year,
-                    amount: b.totalAmount
-                })),
-                totalBilled,
-                refund,
-                balance: (s.openingBalance || 0) - totalBilled + refund
+                messSecurity: s.messSecurity,
+                totalFeesDeposited: totalFees,
+                totalRebateDays,
+                monthlyRebates: s.monthlyRebates,
+                feesDeposited: s.feesDeposited,
             };
         });
 

@@ -5,80 +5,74 @@ import * as XLSX from 'xlsx';
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
-        const year = parseInt(searchParams.get('year') || new Date().getFullYear().toString());
-        const month = searchParams.get('month'); // Optional: specific month report
+        const sessionId = searchParams.get('sessionId');
+        const month = searchParams.get('month') ? parseInt(searchParams.get('month')!) : null;
+        const year = searchParams.get('year') ? parseInt(searchParams.get('year')!) : null;
 
-        const whereClause: any = { year: year };
-        if (month) whereClause.month = month;
-
-        // Fetch all bills matching criteria with student info
-        const bills = await prisma.bill.findMany({
-            where: whereClause,
+        // Fetch mess assignments (these link student→mess per session)
+        const assignments = await prisma.studentMessAssignment.findMany({
+            where: sessionId ? { sessionId: Number(sessionId) } : {},
             include: {
                 student: {
-                    select: {
-                        hostel: true,
-                        mess: true,
-                        name: true,
-                        rollNo: true
+                    include: {
+                        course: true,
+                        monthlyRebates: {
+                            where: {
+                                ...(month ? { month } : {}),
+                                ...(year ? { year } : {}),
+                            }
+                        }
                     }
-                }
+                },
+                mess: true,
+                session: true,
             }
         });
 
-        // Group data by Mess (or Hostel)
-        // User asked: "hostel wise data for thee mess rebate like anusha mess total bill"
-        // Usually Messes serve Hostels. Let's group by Mess first.
+        // Group by mess
+        const messGrouping: Record<string, { totalRebateDays: number, students: any[] }> = {};
 
-        const messGrouping: Record<string, { totalBill: number, totalStudents: number, students: any[] }> = {};
-
-        bills.forEach((bill: any) => {
-            const messName = bill.student.mess || 'Unknown Mess';
+        assignments.forEach((a: any) => {
+            const messName = a.mess.name;
             if (!messGrouping[messName]) {
-                messGrouping[messName] = { totalBill: 0, totalStudents: 0, students: [] };
+                messGrouping[messName] = { totalRebateDays: 0, students: [] };
             }
-
-            messGrouping[messName].totalBill += bill.totalAmount;
-            // Count unique students? Since search could be whole year, one student has multiple bills. 
-            // For line items, we can just list them.
+            const rebateDays = a.student.monthlyRebates.reduce((sum: number, r: any) => sum + r.rebateDays, 0);
+            messGrouping[messName].totalRebateDays += rebateDays;
             messGrouping[messName].students.push({
-                RollNo: bill.student.rollNo,
-                Name: bill.student.name,
-                Hostel: bill.student.hostel,
-                Month: bill.month,
-                Amount: bill.totalAmount
+                RollNo: a.student.rollNo,
+                Name: a.student.name,
+                Course: a.student.course?.name || '-',
+                Hostel: a.student.hostel || '-',
+                Session: a.session.name,
+                'Rebate Days': rebateDays,
             });
         });
 
         const workbook = XLSX.utils.book_new();
 
-        // Summary Sheet
         const summaryData = Object.keys(messGrouping).map(mess => ({
             Mess: mess,
-            'Total Bill Amount': messGrouping[mess].totalBill,
-            'Bill Count': messGrouping[mess].students.length
+            'Total Rebate Days': messGrouping[mess].totalRebateDays,
+            'Student Count': messGrouping[mess].students.length,
         }));
-        const summaryWS = XLSX.utils.json_to_sheet(summaryData);
-        XLSX.utils.book_append_sheet(workbook, summaryWS, "Summary");
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(summaryData), 'Summary');
 
-        // Detail Sheets for each Mess
         Object.keys(messGrouping).forEach(mess => {
-            const ws = XLSX.utils.json_to_sheet(messGrouping[mess].students);
-            XLSX.utils.book_append_sheet(workbook, ws, mess.substring(0, 31)); // Sheet name max length 31
+            XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(messGrouping[mess].students), mess.substring(0, 31));
         });
 
-        const buf = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+        const buf = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
         return new Response(buf, {
             status: 200,
             headers: {
-                'Content-Disposition': `attachment; filename="mess_wise_report_${year}.xlsx"`,
+                'Content-Disposition': `attachment; filename="mess_wise_report.xlsx"`,
                 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             },
         });
-
     } catch (error) {
-        console.error('Report generation error:', error);
+        console.error('Hostel-wise report error:', error);
         return NextResponse.json({ error: 'Failed to generate report' }, { status: 500 });
     }
 }

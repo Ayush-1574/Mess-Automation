@@ -18,29 +18,35 @@ export async function POST(request: Request) {
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
+        // Pre-fetch courses for name lookup
+        const allCourses = await prisma.course.findMany();
+        const courseMap = new Map(allCourses.map(c => [c.name.toLowerCase(), c.id]));
+
         const studentsToCreate = [];
 
         for (const row of jsonData as any[]) {
-            // Validate and map fields. Adjust keys based on Excel header
             if (row.RollNo && row.Name) {
+                // Course lookup: match by name
+                let courseId: number | undefined;
+                if (row.Course) {
+                    courseId = courseMap.get(String(row.Course).toLowerCase());
+                }
+
                 studentsToCreate.push({
                     rollNo: String(row.RollNo),
                     name: row.Name,
-                    batch: row.Batch,
-                    mess: row.Mess,
+                    batch: row.Batch ? String(row.Batch) : undefined,
                     hostel: row.Hostel,
                     email: row.Email,
+                    address: row.Address,
+                    messSecurity: row.MessSecurity ? Number(row.MessSecurity) : 0,
                     bankAccountNo: row.BankAccountNo ? String(row.BankAccountNo) : null,
                     bankName: row.BankName,
                     ifsc: row.IFSC,
+                    courseId: courseId ?? null,
                 });
             }
         }
-
-        // Bulk create/upsert using transaction or createMany
-        // Prisma createMany is faster for non-duplicates
-        // But we might want to update if exists. createMany doesn't support upsert usually in sqlite/postgres same way?
-        // createMany does skipDuplicates.
 
         await prisma.student.createMany({
             data: studentsToCreate,

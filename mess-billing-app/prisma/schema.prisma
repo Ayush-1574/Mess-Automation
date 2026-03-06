@@ -7,54 +7,112 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Course {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique  // e.g. BTech, MTech, PhD
+  createdAt   DateTime  @default(now())
+
+  students    Student[]
+  messRates   MessRate[]
+}
+
+model Session {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique  // e.g. 2026-I, 2026-II
+  startYear   Int
+  semester    String    // "I" or "II"
+  createdAt   DateTime  @default(now())
+
+  messAssignments  StudentMessAssignment[]
+  monthlyRebates   MonthlyRebate[]
+  messRates        MessRate[]
+  feesDeposited    FeesDeposited[]
+}
+
 model Student {
   id             Int      @id @default(autoincrement())
   rollNo         String   @unique
   name           String
   batch          String?
-  mess           String?
   hostel         String?
   email          String?  @unique
+  address        String?
+  messSecurity   Float    @default(0)
   bankAccountNo  String?
   bankName       String?
   ifsc           String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   isBankEditable Boolean  @default(true)
-  openingBalance Float    @default(0)
-  bills          Bill[]
-  rebates        Rebate[]
-}
 
-model Bill {
-  id          Int      @id @default(autoincrement())
-  month       String
-  year        Int
-  totalDays   Int
-  ratePerDay  Float
-  totalAmount Float
-  isPaid      Boolean  @default(false)
-  generatedAt DateTime @default(now())
-  studentId   Int
-  student     Student  @relation(fields: [studentId], references: [id])
+  courseId       Int?
+  course         Course?  @relation(fields: [courseId], references: [id])
 
-  @@unique([studentId, month, year])
-}
-
-model Rebate {
-  id        Int      @id @default(autoincrement())
-  startDate DateTime
-  endDate   DateTime
-  reason    String?
-  status    String   @default("PENDING")
-  studentId Int
-  student   Student  @relation(fields: [studentId], references: [id])
+  messAssignments  StudentMessAssignment[]
+  monthlyRebates   MonthlyRebate[]
+  feesDeposited    FeesDeposited[]
 }
 
 model Mess {
   id        Int      @id @default(autoincrement())
   name      String   @unique
-  baseRate  Float
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  messAssignments StudentMessAssignment[]
+  messRates       MessRate[]
+}
+
+model StudentMessAssignment {
+  id        Int     @id @default(autoincrement())
+  studentId Int
+  messId    Int
+  sessionId Int
+
+  student   Student @relation(fields: [studentId], references: [id])
+  mess      Mess    @relation(fields: [messId], references: [id])
+  session   Session @relation(fields: [sessionId], references: [id])
+
+  @@unique([studentId, sessionId])
+}
+
+model MonthlyRebate {
+  id          Int      @id @default(autoincrement())
+  studentId   Int
+  sessionId   Int
+  month       Int      // 1 to 12
+  year        Int
+  rebateDays  Int
+  createdAt   DateTime @default(now())
+
+  student     Student  @relation(fields: [studentId], references: [id])
+  session     Session  @relation(fields: [sessionId], references: [id])
+
+  @@unique([studentId, sessionId, month, year])
+}
+
+model MessRate {
+  id          Int     @id @default(autoincrement())
+  messId      Int
+  courseId    Int
+  sessionId   Int
+  monthlyRate Float
+
+  mess        Mess    @relation(fields: [messId], references: [id])
+  course      Course  @relation(fields: [courseId], references: [id])
+  session     Session @relation(fields: [sessionId], references: [id])
+
+  @@unique([messId, courseId, sessionId])
+}
+
+model FeesDeposited {
+  id          Int      @id @default(autoincrement())
+  studentId   Int
+  sessionId   Int
+  amount      Float
+  paymentDate DateTime
+  createdAt   DateTime @default(now())
+
+  student     Student  @relation(fields: [studentId], references: [id])
+  session     Session  @relation(fields: [sessionId], references: [id])
 }

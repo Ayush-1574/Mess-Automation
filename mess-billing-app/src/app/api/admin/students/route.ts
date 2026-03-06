@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export async function GET() {
-    console.log('GET /api/admin/students called');
     try {
         const students = await prisma.student.findMany({
             select: {
@@ -10,13 +9,14 @@ export async function GET() {
                 rollNo: true,
                 name: true,
                 batch: true,
-                mess: true,
                 hostel: true,
                 isBankEditable: true,
+                course: { select: { id: true, name: true } },
+                messAssignments: {
+                    include: { mess: true, session: true }
+                },
             },
-            orderBy: {
-                rollNo: 'asc'
-            }
+            orderBy: { rollNo: 'asc' }
         });
         return NextResponse.json(students);
     } catch (error) {

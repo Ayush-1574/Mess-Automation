@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
+import { Button } from '../../../components/ui/Button';
 
 export default function SessionsPage() {
     const [sessions, setSessions] = useState<any[]>([]);
@@ -80,10 +81,11 @@ export default function SessionsPage() {
                             <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Semester</label>
                             <div className="flex gap-2">
                                 {['I', 'II'].map(s => (
-                                    <button key={s} type="button" onClick={() => setSemester(s)}
-                                        className={`flex-1 py-2.5 rounded-xl font-bold text-sm border transition-colors ${form.semester === s ? 'bg-violet-600 text-white border-violet-600' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-violet-400'}`}>
+                                    <Button key={s} type="button" onClick={() => setSemester(s)}
+                                        variant={form.semester === s ? 'primary' : 'outline'}
+                                        className="flex-1 py-2.5">
                                         {s}
-                                    </button>
+                                    </Button>
                                 ))}
                             </div>
                         </div>
@@ -94,10 +96,9 @@ export default function SessionsPage() {
                             className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500/50 font-bold"
                             required placeholder="e.g. 2026-I" />
                     </div>
-                    <button type="submit" disabled={loading}
-                        className="w-full bg-violet-600 text-white font-bold py-3 rounded-xl hover:bg-violet-700 transition-colors disabled:opacity-50">
+                    <Button type="submit" variant="primary" isLoading={loading} disabled={loading} className="w-full py-3">
                         {loading ? 'Creating…' : 'Create Session'}
-                    </button>
+                    </Button>
                 </form>
                 {message && (
                     <p className={`mt-3 text-sm font-semibold ${message.includes('!') || message.includes('deleted') ? 'text-emerald-600' : 'text-rose-600'}`}>{message}</p>
@@ -131,10 +132,9 @@ export default function SessionsPage() {
                                     <td className="p-4 text-slate-600 font-medium">{s.startYear}</td>
                                     <td className="p-4 text-slate-600 font-medium">{s.semester}</td>
                                     <td className="p-4 text-right pr-6">
-                                        <button onClick={() => handleDelete(s.id)}
-                                            className="text-rose-600 text-xs font-bold px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 transition-colors">
+                                        <Button variant="danger" size="sm" onClick={() => handleDelete(s.id)}>
                                             Delete
-                                        </button>
+                                        </Button>
                                     </td>
                                 </tr>
                             ))}

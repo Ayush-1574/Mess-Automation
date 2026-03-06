@@ -1,6 +1,9 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
+import { Button } from '../../../components/ui/Button';
+import { Select } from '../../../components/ui/Select';
+import { UploadWithErrors } from '../../../components/ui/UploadWithErrors';
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
@@ -20,16 +23,12 @@ export default function MonthlyRebatesPage() {
     const [message, setMessage] = useState('');
     const [fetching, setFetching] = useState(false);
 
-    // Bulk upload state
     const [showBulkPanel, setShowBulkPanel] = useState(false);
     const [bulkForm, setBulkForm] = useState({
         sessionId: '', messId: '', hostel: '',
         month: String(new Date().getMonth() + 1),
         year: String(new Date().getFullYear()),
     });
-    const [bulkFile, setBulkFile] = useState<File | null>(null);
-    const [bulkLoading, setBulkLoading] = useState(false);
-    const [bulkResult, setBulkResult] = useState<{ message?: string; errors?: string[]; error?: string } | null>(null);
 
     useEffect(() => {
         fetch('/api/sessions').then(r => r.json()).then(d => setSessions(Array.isArray(d) ? d : []));
@@ -71,27 +70,8 @@ export default function MonthlyRebatesPage() {
         if (selectedSession) fetchRebates(selectedSession);
     };
 
-    const handleBulkUpload = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!bulkFile) return;
-        setBulkLoading(true);
-        setBulkResult(null);
-        try {
-            const formData = new FormData();
-            formData.append('file', bulkFile);
-            formData.append('sessionId', bulkForm.sessionId);
-            formData.append('month', bulkForm.month);
-            formData.append('year', bulkForm.year);
-            formData.append('hostel', bulkForm.hostel);
-            formData.append('messId', bulkForm.messId);
-            const res = await fetch('/api/upload-monthly-rebates', { method: 'POST', body: formData });
-            const data = await res.json();
-            setBulkResult(data);
-            setBulkFile(null);
-            if (selectedSession) fetchRebates(selectedSession);
-        } finally {
-            setBulkLoading(false);
-        }
+    const handleBulkSuccess = () => {
+        if (selectedSession) fetchRebates(selectedSession);
     };
 
     return (
@@ -101,97 +81,63 @@ export default function MonthlyRebatesPage() {
                     <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Monthly Rebates</h1>
                     <p className="text-slate-500 mt-2 font-medium">Record rebate days granted to students per month.</p>
                 </div>
-                <button
-                    onClick={() => { setShowBulkPanel(p => !p); setBulkResult(null); }}
-                    className="flex items-center gap-2 bg-indigo-600 text-white font-bold px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors text-sm shadow-lg shadow-indigo-200"
+                <Button
+                    variant="primary"
+                    onClick={() => setShowBulkPanel(p => !p)}
+                    className="flex items-center gap-2"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                     {showBulkPanel ? 'Close Bulk Upload' : 'Bulk Upload'}
-                </button>
+                </Button>
             </div>
 
-            {/* Bulk Upload Panel */}
             {showBulkPanel && (
-                <Card className="p-6 border-2 border-indigo-100 bg-indigo-50/30">
+                <Card className="p-6 border-2 border-indigo-100 bg-indigo-50/30 relative z-40">
                     <h2 className="text-lg font-bold text-slate-800 mb-5 flex items-center gap-2">
                         <span className="w-2 h-6 bg-indigo-500 rounded-full"></span>Bulk Rebate Upload
-                        <span className="ml-auto text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">Select context below, then upload Excel</span>
+                        <span className="ml-auto text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">Select context first, then upload Excel</span>
                     </h2>
-                    <form onSubmit={handleBulkUpload} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Session</label>
-                                <select value={bulkForm.sessionId} onChange={e => setBulkForm(p => ({ ...p, sessionId: e.target.value }))} required
-                                    className="w-full border border-slate-200 bg-white px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
-                                    <option value="">Select session</option>
-                                    {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Mess</label>
-                                <select value={bulkForm.messId} onChange={e => setBulkForm(p => ({ ...p, messId: e.target.value }))} required
-                                    className="w-full border border-slate-200 bg-white px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
-                                    <option value="">Select mess</option>
-                                    {messes.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Hostel</label>
-                                <input
-                                    value={bulkForm.hostel}
-                                    onChange={e => setBulkForm(p => ({ ...p, hostel: e.target.value }))}
-                                    placeholder="e.g. Chenab"
-                                    className="w-full border border-slate-200 bg-white px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Month</label>
-                                <select value={bulkForm.month} onChange={e => setBulkForm(p => ({ ...p, month: e.target.value }))} required
-                                    className="w-full border border-slate-200 bg-white px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
-                                    {MONTH_NAMES.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Year</label>
-                                <input type="number" value={bulkForm.year} onChange={e => setBulkForm(p => ({ ...p, year: e.target.value }))} required min="2000" max="2100"
-                                    className="w-full border border-slate-200 bg-white px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Excel File</label>
-                                <input
-                                    type="file"
-                                    accept=".xlsx,.xls"
-                                    onChange={e => setBulkFile(e.target.files?.[0] ?? null)}
-                                    required
-                                    className="block w-full text-sm text-slate-500 file:cursor-pointer file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-colors"
-                                />
-                            </div>
+                    {/* Context selectors — passed as extraFields to the API */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Session <span className="text-rose-500">*</span></label>
+                            <Select value={bulkForm.sessionId} onChange={val => setBulkForm(p => ({ ...p, sessionId: String(val) }))}
+                                options={[{ label: 'Select session', value: '' }, ...sessions.map(s => ({ label: s.name, value: s.id }))]} />
                         </div>
-                        <div className="flex items-center gap-4">
-                            <button type="submit" disabled={!bulkFile || bulkLoading}
-                                className="bg-indigo-600 text-white font-bold px-6 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm">
-                                {bulkLoading ? 'Processing…' : 'Upload & Process'}
-                            </button>
-                            <p className="text-xs text-slate-500 font-medium">
-                                Excel columns: <span className="font-mono font-semibold text-slate-600">RollNo, StudentName, RebateDays, MessRate, GSTPercentage</span>
-                            </p>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Mess (optional)</label>
+                            <Select value={bulkForm.messId} onChange={val => setBulkForm(p => ({ ...p, messId: String(val) }))}
+                                options={[{ label: 'Select mess', value: '' }, ...messes.map(m => ({ label: m.name, value: m.id }))]} />
                         </div>
-                    </form>
-                    {bulkResult && (
-                        <div className={`mt-4 p-3 rounded-xl border text-sm ${bulkResult.error || (bulkResult.errors && bulkResult.errors.length > 0) ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
-                            {bulkResult.message && <p className="font-semibold text-slate-800">{bulkResult.message}</p>}
-                            {bulkResult.error && <p className="font-semibold text-rose-700">{bulkResult.error}</p>}
-                            {bulkResult.errors && bulkResult.errors.length > 0 && (
-                                <ul className="mt-2 space-y-1 max-h-40 overflow-y-auto">
-                                    {bulkResult.errors.map((e, i) => <li key={i} className="text-amber-700 text-xs font-medium">⚠ {e}</li>)}
-                                </ul>
-                            )}
+                        <div>
+                            <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Month <span className="text-rose-500">*</span></label>
+                            <Select value={bulkForm.month} onChange={val => setBulkForm(p => ({ ...p, month: String(val) }))}
+                                options={MONTH_NAMES.map((m, i) => ({ label: m, value: String(i + 1) }))} />
                         </div>
-                    )}
+                        <div>
+                            <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Year <span className="text-rose-500">*</span></label>
+                            <input type="number" value={bulkForm.year} onChange={e => setBulkForm(p => ({ ...p, year: e.target.value }))} min="2000" max="2100"
+                                className="w-full border border-slate-200 bg-white px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+                        </div>
+                    </div>
+                    <p className="text-xs text-slate-400 font-medium mb-3">Excel columns: <span className="font-mono font-semibold text-slate-500">RollNo, RebateDays, MessRate (optional), GSTPercentage (optional)</span></p>
+                    <UploadWithErrors
+                        endpoint="/api/upload-monthly-rebates"
+                        accent="orange"
+                        uploadLabel="Upload Rebates Excel"
+                        extraFields={{ sessionId: bulkForm.sessionId, month: bulkForm.month, year: bulkForm.year, messId: bulkForm.messId, hostel: bulkForm.hostel }}
+                        errorColumns={[
+                            { key: 'RollNo', label: 'RollNo' },
+                            { key: 'RebateDays', label: 'RebateDays' },
+                            { key: 'MessRate', label: 'MessRate' },
+                            { key: 'GSTPercentage', label: 'GSTPercentage' },
+                        ]}
+                        onSuccess={handleBulkSuccess}
+                    />
                 </Card>
             )}
 
-            <Card className="p-6">
+            <Card className="p-6 relative z-30">
                 <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
                     <span className="w-2 h-6 bg-orange-500 rounded-full"></span>Add / Update Rebate
                 </h2>
@@ -205,20 +151,23 @@ export default function MonthlyRebatesPage() {
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Session</label>
-                            <select value={form.sessionId} onChange={e => setForm(p => ({ ...p, sessionId: e.target.value }))} required
-                                className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/50">
-                                <option value="">Select session</option>
-                                {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
+                            <Select
+                                theme="warning"
+                                value={form.sessionId}
+                                onChange={val => setForm(p => ({ ...p, sessionId: String(val) }))}
+                                options={[{ label: 'Select session', value: '' }, ...sessions.map(s => ({ label: s.name, value: s.id }))]}
+                            />
                         </div>
                     </div>
                     <div className="grid grid-cols-3 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Month</label>
-                            <select value={form.month} onChange={e => setForm(p => ({ ...p, month: e.target.value }))} required
-                                className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/50">
-                                {MONTH_NAMES.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
-                            </select>
+                            <Select
+                                theme="warning"
+                                value={form.month}
+                                onChange={val => setForm(p => ({ ...p, month: String(val) }))}
+                                options={MONTH_NAMES.map((m, i) => ({ label: m, value: String(i + 1) }))}
+                            />
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Year</label>
@@ -231,22 +180,24 @@ export default function MonthlyRebatesPage() {
                                 className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/50" placeholder="0" />
                         </div>
                     </div>
-                    <button type="submit" disabled={loading}
-                        className="w-full bg-orange-500 text-white font-bold py-3 rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-50">
+                    <Button type="submit" variant="warning" isLoading={loading} disabled={loading} className="w-full py-3">
                         {loading ? 'Saving…' : 'Save Rebate'}
-                    </button>
+                    </Button>
                 </form>
                 {message && <p className={`mt-3 text-sm font-semibold ${message.includes('!') ? 'text-emerald-600' : 'text-rose-600'}`}>{message}</p>}
             </Card>
 
-            <Card className="p-0 overflow-hidden">
+            <Card className="p-0 overflow-hidden relative z-20">
                 <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                     <h2 className="text-lg font-bold text-slate-800">View Rebates by Session</h2>
-                    <select value={selectedSession} onChange={e => setSelectedSession(e.target.value)}
-                        className="border border-slate-200 bg-white px-3 py-2 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/50">
-                        <option value="">-- Select session --</option>
-                        {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
+                    <div className="w-48">
+                        <Select
+                            theme="warning"
+                            value={selectedSession}
+                            onChange={val => setSelectedSession(String(val))}
+                            options={[{ label: '-- Select session --', value: '' }, ...sessions.map(s => ({ label: s.name, value: s.id }))]}
+                        />
+                    </div>
                 </div>
                 {fetching ? (
                     <div className="p-8 text-center text-slate-400">Loading…</div>
@@ -277,8 +228,7 @@ export default function MonthlyRebatesPage() {
                                         <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-orange-50 text-orange-700 border border-orange-100 font-bold text-xs">{r.rebateDays}d</span>
                                     </td>
                                     <td className="p-4 text-right pr-6">
-                                        <button onClick={() => handleDelete(r.id)}
-                                            className="text-rose-600 text-xs font-bold px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 transition-colors">Delete</button>
+                                        <Button variant="danger" size="sm" onClick={() => handleDelete(r.id)}>Delete</Button>
                                     </td>
                                 </tr>
                             ))}

@@ -1,6 +1,8 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
+import { Button } from '../../../components/ui/Button';
+import { Select } from '../../../components/ui/Select';
 
 const MONTH_NAMES = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -70,7 +72,7 @@ export default function MessRatesPage() {
                 <p className="text-slate-500 mt-2 font-medium">Set monthly mess rates per mess, course, session and month.</p>
             </div>
 
-            <Card className="p-6">
+            <Card className="p-6 relative z-30">
                 <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
                     <span className="w-2 h-6 bg-blue-500 rounded-full"></span>Set / Update Rate
                 </h2>
@@ -78,37 +80,35 @@ export default function MessRatesPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Session</label>
-                            <select value={form.sessionId} onChange={e => setForm(p => ({ ...p, sessionId: e.target.value }))} required
-                                className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50">
-                                <option value="">Select session</option>
-                                {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
+                            <Select
+                                value={form.sessionId}
+                                onChange={val => setForm(p => ({ ...p, sessionId: String(val) }))}
+                                options={[{ label: 'Select session', value: '' }, ...sessions.map(s => ({ label: s.name, value: s.id }))]}
+                            />
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Month</label>
-                            <select value={form.month} onChange={e => setForm(p => ({ ...p, month: e.target.value }))} required
-                                className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50">
-                                <option value="">Select month</option>
-                                {MONTH_NAMES.map((name, i) => (
-                                    <option key={i + 1} value={i + 1}>{name}</option>
-                                ))}
-                            </select>
+                            <Select
+                                value={form.month}
+                                onChange={val => setForm(p => ({ ...p, month: String(val) }))}
+                                options={[{ label: 'Select month', value: '' }, ...MONTH_NAMES.map((name, i) => ({ label: name, value: String(i + 1) }))]}
+                            />
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Mess</label>
-                            <select value={form.messId} onChange={e => setForm(p => ({ ...p, messId: e.target.value }))} required
-                                className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50">
-                                <option value="">Select mess</option>
-                                {messes.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                            </select>
+                            <Select
+                                value={form.messId}
+                                onChange={val => setForm(p => ({ ...p, messId: String(val) }))}
+                                options={[{ label: 'Select mess', value: '' }, ...messes.map(m => ({ label: m.name, value: m.id }))]}
+                            />
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Course</label>
-                            <select value={form.courseId} onChange={e => setForm(p => ({ ...p, courseId: e.target.value }))} required
-                                className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50">
-                                <option value="">Select course</option>
-                                {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
+                            <Select
+                                value={form.courseId}
+                                onChange={val => setForm(p => ({ ...p, courseId: String(val) }))}
+                                options={[{ label: 'Select course', value: '' }, ...courses.map(c => ({ label: c.name, value: c.id }))]}
+                            />
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Monthly Rate (₹)</label>
@@ -123,22 +123,23 @@ export default function MessRatesPage() {
                                 className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
                         </div>
                     </div>
-                    <button type="submit" disabled={loading}
-                        className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50">
+                    <Button type="submit" isLoading={loading} disabled={loading} variant="primary" className="w-full py-3">
                         {loading ? 'Saving…' : 'Save Rate'}
-                    </button>
+                    </Button>
                 </form>
                 {message && <p className={`mt-3 text-sm font-semibold ${message.includes('!') ? 'text-emerald-600' : 'text-rose-600'}`}>{message}</p>}
             </Card>
 
-            <Card className="p-0 overflow-hidden">
+            <Card className="p-0 overflow-hidden relative z-20">
                 <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                     <h2 className="text-lg font-bold text-slate-800">View Rates by Session</h2>
-                    <select value={selectedSession} onChange={e => setSelectedSession(e.target.value)}
-                        className="border border-slate-200 bg-white px-3 py-2 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50">
-                        <option value="">-- Select session --</option>
-                        {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
+                    <div className="w-48">
+                        <Select
+                            value={selectedSession}
+                            onChange={val => setSelectedSession(String(val))}
+                            options={[{ label: '-- Select session --', value: '' }, ...sessions.map(s => ({ label: s.name, value: s.id }))]}
+                        />
+                    </div>
                 </div>
                 {fetching ? (
                     <div className="p-8 text-center text-slate-400">Loading…</div>
@@ -177,8 +178,7 @@ export default function MessRatesPage() {
                                         <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">{r.gstPercentage ?? 0}%</span>
                                     </td>
                                     <td className="p-4 text-right pr-6">
-                                        <button onClick={() => handleDelete(r.id)}
-                                            className="text-rose-600 text-xs font-bold px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 transition-colors">Delete</button>
+                                        <Button variant="danger" size="sm" onClick={() => handleDelete(r.id)}>Delete</Button>
                                     </td>
                                 </tr>
                             ))}

@@ -13,7 +13,6 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
                     course: true,
                     messAssignments: { include: { mess: true, session: true } },
                     monthlyRebates: { include: { session: true }, orderBy: [{ year: 'desc' }, { month: 'desc' }] },
-                    feesDeposited: { include: { session: true }, orderBy: { paymentDate: 'desc' } },
                 },
             });
         }
@@ -25,7 +24,6 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
                     course: true,
                     messAssignments: { include: { mess: true, session: true } },
                     monthlyRebates: { include: { session: true }, orderBy: [{ year: 'desc' }, { month: 'desc' }] },
-                    feesDeposited: { include: { session: true }, orderBy: { paymentDate: 'desc' } },
                 },
             });
         }
@@ -79,7 +77,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
             return NextResponse.json(updated);
         }
 
-        // General student profile update (address, messSecurity, courseId etc.)
+        // General student profile update
         const allowedFields = ['address', 'messSecurity', 'courseId', 'hostel', 'batch', 'email'];
         const updateData: any = {};
         for (const field of allowedFields) {

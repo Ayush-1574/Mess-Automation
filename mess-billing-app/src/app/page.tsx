@@ -3,6 +3,7 @@ import { BrandLogo } from '@/components/ui/BrandLogo';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Select } from '../components/ui/Select';
+import { Button } from '@/components/ui/Button';
 
 export default function Home() {
   const router = useRouter();
@@ -58,12 +59,13 @@ export default function Home() {
             />
           </div>
 
-          <button
+          <Button
             type="submit"
-            className="w-full mt-2 bg-indigo-600 text-white font-semibold py-3.5 rounded-xl hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transform transition-all active:scale-[0.98] shadow-md shadow-indigo-200"
+            variant="primary"
+            className="w-full mt-2 py-3.5"
           >
             Sign In
-          </button>
+          </Button>
         </form>
       </div>
     </div>

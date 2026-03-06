@@ -65,9 +65,6 @@ export async function GET(request: Request) {
                         ...(isAllMonths ? {} : { year }),
                     },
                 },
-                feesDeposited: {
-                    where: { sessionId: sessionIdNum },
-                },
             },
             orderBy: { rollNo: 'asc' },
         });
@@ -75,11 +72,6 @@ export async function GET(request: Request) {
         // Fetch all MessRates for this session at once
         const messRates = await prisma.messRate.findMany({
             where: { sessionId: sessionIdNum },
-        });
-
-        const totalFeesMap = new Map<number, number>();
-        students.forEach((s) => {
-            totalFeesMap.set(s.id, s.feesDeposited.reduce((sum, f) => sum + f.amount, 0));
         });
 
         const workbook = XLSX.utils.book_new();
@@ -106,10 +98,10 @@ export async function GET(request: Request) {
                         mr.month === month
                 );
 
-                const dailyRate = rate?.monthlyRate ?? 0; // field is named monthlyRate but is actually daily rate
+                const dailyRate = rate?.monthlyRate ?? 0;
                 const gst = rate?.gstPercentage ?? 0;
                 const amount = chargeableDays * dailyRate * (1 + gst / 100);
-                const totalFees = totalFeesMap.get(student.id) ?? 0;
+                const feesDeposited = assignment?.amount ?? 0;
 
                 return {
                     'Roll No': student.rollNo,
@@ -125,8 +117,8 @@ export async function GET(request: Request) {
                     'Daily Rate (₹)': dailyRate,
                     'GST (%)': gst,
                     'Amount (₹)': parseFloat(amount.toFixed(2)),
-                    'Total Fees Deposited (₹)': parseFloat(totalFees.toFixed(2)),
-                    'Balance (₹)': parseFloat((totalFees - amount).toFixed(2)),
+                    'Fees Deposited (₹)': parseFloat(feesDeposited.toFixed(2)),
+                    'Balance (₹)': parseFloat((feesDeposited - amount).toFixed(2)),
                 };
             });
 

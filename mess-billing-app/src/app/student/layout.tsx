@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import React, { useState, Suspense } from 'react';
 import { BrandLogo } from '../../components/ui/BrandLogo';
+import { Button } from '../../components/ui/Button';
 
 function NavigationInner({
     children,
@@ -28,15 +29,16 @@ function NavigationInner({
                         <BrandLogo className="!p-1.5 !rounded-xl border-white/40" />
                         <h2 className="text-xl font-bold text-slate-800 tracking-tight whitespace-nowrap">Student Portal</h2>
                     </div>
-                    <button
+                    <Button
+                        variant="ghost"
                         onClick={toggleSidebar}
-                        className={`p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors ${isCollapsed ? 'mx-auto' : ''}`}
+                        className={`!p-2 text-slate-500 mx-auto`}
                         title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isCollapsed ? "M13 5l7 7-7 7M5 5l7 7-7 7" : "M11 19l-7-7 7-7m8 14l-7-7 7-7"} />
                         </svg>
-                    </button>
+                    </Button>
                 </div>
 
                 <nav className="flex-1 py-6 px-3 space-y-1.5 overflow-y-auto custom-scrollbar bg-transparent overflow-x-hidden">

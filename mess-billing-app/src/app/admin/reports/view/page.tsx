@@ -1,6 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Card } from '../../../../components/ui/Card';
+import { Button } from '../../../../components/ui/Button';
+import { Select } from '../../../../components/ui/Select';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -35,15 +37,16 @@ export default function ConsolidatedViewPage() {
 
     const handleExport = () => {
         const headers = ['Roll No', 'Name', 'Course', 'Mess', 'Hostel', 'Bank Account', 'IFSC', 'Mess Security',
-            ...MONTH_NAMES.map(m => `${m} Rebate`), 'Total Rebate Days', 'Total Fees Deposited'];
+            ...MONTH_NAMES.map(m => `${m} Rebate`), 'Total Rebate Days', 'Fees Deposited'];
         const rows = filteredData.map(s => {
             const monthRebates = Array.from({ length: 12 }, (_, i) => {
                 const r = s.monthlyRebates?.find((x: any) => x.month === (i + 1));
                 return r ? r.rebateDays : 0;
             });
+            const feesDeposited = (s.messAssignments ?? []).reduce((sum: number, a: any) => sum + (a.amount ?? 0), 0);
             return [s.rollNo, s.name, s.course || '-', s.mess, s.hostel || '-',
                 s.bankAccountNo || '-', s.ifsc || '-', s.messSecurity,
-                ...monthRebates, s.totalRebateDays, s.totalFeesDeposited].join(',');
+                ...monthRebates, s.totalRebateDays, feesDeposited].join(',');
         });
         const csv = [headers.join(','), ...rows].join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -61,11 +64,14 @@ export default function ConsolidatedViewPage() {
                     <p className="text-slate-500 mt-1 font-medium">View and export comprehensive student data.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                    <select value={selectedSession} onChange={e => setSelectedSession(e.target.value)}
-                        className="border border-slate-200 bg-white px-3 py-2.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-sm">
-                        <option value="">All Sessions</option>
-                        {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
+                    <div className="w-48 relative z-50">
+                        <Select
+                            theme="primary"
+                            value={selectedSession}
+                            onChange={(val) => setSelectedSession(String(val))}
+                            options={[{ label: 'All Sessions', value: '' }, ...sessions.map(s => ({ label: s.name, value: s.id }))]}
+                        />
+                    </div>
                     <div className="relative">
                         <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -74,11 +80,10 @@ export default function ConsolidatedViewPage() {
                             className="pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-sm w-48 font-medium"
                             value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                     </div>
-                    <button onClick={handleExport}
-                        className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2.5 rounded-xl hover:bg-emerald-100 font-semibold text-sm transition-all flex items-center gap-2 shadow-sm">
+                    <Button onClick={handleExport} variant="success" className="gap-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                         Export CSV
-                    </button>
+                    </Button>
                     <a href="/admin/reports" className="text-slate-500 hover:text-indigo-600 font-medium text-sm flex items-center gap-1 transition-colors px-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                         Back
@@ -86,7 +91,7 @@ export default function ConsolidatedViewPage() {
                 </div>
             </div>
 
-            <Card className="p-0 overflow-hidden">
+            <Card className="p-0 overflow-hidden relative z-40">
                 {loading ? (
                     <div className="p-12 flex flex-col items-center justify-center text-slate-400">
                         <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
@@ -107,7 +112,7 @@ export default function ConsolidatedViewPage() {
                                     <th className="p-4 text-right bg-slate-100/50">Mess Security</th>
                                     {MONTH_NAMES.map(m => <th key={m} className="p-4 text-right bg-orange-50/50">{m} Rebate</th>)}
                                     <th className="p-4 text-right bg-orange-50">Total Rebate Days</th>
-                                    <th className="p-4 text-right bg-teal-50/50">Total Fees</th>
+                                    <th className="p-4 text-right bg-teal-50/50">Fees Deposited</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -134,7 +139,7 @@ export default function ConsolidatedViewPage() {
                                             );
                                         })}
                                         <td className="p-4 text-right font-bold text-orange-700 bg-orange-50/40">{student.totalRebateDays}d</td>
-                                        <td className="p-4 text-right font-bold text-teal-700 bg-teal-50/20">₹{student.totalFeesDeposited?.toLocaleString(undefined, { minimumFractionDigits: 0 }) || 0}</td>
+                                        <td className="p-4 text-right font-bold text-teal-700 bg-teal-50/20">₹{((student.messAssignments ?? []).reduce((sum: number, a: any) => sum + (a.amount ?? 0), 0)).toLocaleString(undefined, { minimumFractionDigits: 0 })}</td>
                                     </tr>
                                 ))}
                                 {filteredData.length === 0 && (

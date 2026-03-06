@@ -2,6 +2,7 @@
 import { useSearchParams } from 'next/navigation';
 import React, { useEffect, useState, Suspense } from 'react';
 import { Card } from '../../../components/ui/Card';
+import { Button } from '../../../components/ui/Button';
 
 function BankContent() {
     const searchParams = useSearchParams();
@@ -141,20 +142,15 @@ function BankContent() {
 
                     {editable && (
                         <div className="pt-4">
-                            <button
+                            <Button
                                 type="submit"
                                 disabled={saving}
-                                className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all active:scale-[0.98] shadow-lg shadow-indigo-200 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
+                                isLoading={saving}
+                                variant="primary"
+                                className="w-full py-4 gap-2"
                             >
-                                {saving ? (
-                                    <>
-                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
-                                        Saving Changes...
-                                    </>
-                                ) : (
-                                    'Update Bank Details'
-                                )}
-                            </button>
+                                {saving ? 'Saving Changes...' : 'Update Bank Details'}
+                            </Button>
                         </div>
                     )}
                 </form>

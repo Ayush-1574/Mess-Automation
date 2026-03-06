@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import * as XLSX from 'xlsx';
 
 // POST /api/upload-mess-assignments
-// Excel columns: RollNo, MessName, SessionName
+// Excel columns: RollNo, MessName, SessionName, Amount (optional)
 export async function POST(request: Request) {
     try {
         const formData = await request.formData();
@@ -15,44 +15,59 @@ export async function POST(request: Request) {
         const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]) as any[];
 
         // Pre-fetch lookup maps
-        const [allSessions, allMesses] = await Promise.all([
+        const [allSessions, allMesses, allStudents] = await Promise.all([
             prisma.session.findMany(),
             prisma.mess.findMany(),
+            prisma.student.findMany({ select: { id: true, rollNo: true } }),
         ]);
         const sessionMap = new Map(allSessions.map(s => [s.name.toLowerCase(), s.id]));
         const messMap = new Map(allMesses.map(m => [m.name.toLowerCase(), m.id]));
+        const studentMap = new Map(allStudents.map(s => [s.rollNo.toLowerCase(), s.id]));
 
-        let success = 0;
-        const errors: string[] = [];
+        let imported = 0;
+        const errorRows: any[] = [];
+        const validRows: any[] = [];
 
-        for (const row of jsonData) {
+        for (let i = 0; i < jsonData.length; i++) {
+            const row = jsonData[i];
+            const issues: string[] = [];
             const rollNo = String(row.RollNo ?? '').trim();
             const messName = String(row.MessName ?? '').trim();
             const sessionName = String(row.SessionName ?? '').trim();
+            const amountRaw = row.Amount;
+            const amount = amountRaw !== undefined && amountRaw !== '' ? Number(amountRaw) : 0;
 
-            if (!rollNo || !messName || !sessionName) {
-                errors.push(`Row missing fields: ${JSON.stringify(row)}`);
-                continue;
+            if (!rollNo) issues.push('RollNo is missing');
+            if (!messName) issues.push('MessName is missing');
+            if (!sessionName) issues.push('SessionName is missing');
+            if (amountRaw !== undefined && amountRaw !== '' && isNaN(amount)) issues.push('Amount must be a number');
+
+            const messId = messName ? messMap.get(messName.toLowerCase()) : undefined;
+            const sessionId = sessionName ? sessionMap.get(sessionName.toLowerCase()) : undefined;
+            const studentId = rollNo ? studentMap.get(rollNo.toLowerCase()) : undefined;
+
+            if (messName && messId === undefined) issues.push(`Mess "${messName}" not found — available: ${allMesses.map(m => m.name).join(', ')}`);
+            if (sessionName && sessionId === undefined) issues.push(`Session "${sessionName}" not found — available: ${allSessions.map(s => s.name).join(', ')}`);
+            if (rollNo && studentId === undefined) issues.push(`Student with RollNo "${rollNo}" not found`);
+
+            if (issues.length > 0) {
+                errorRows.push({ _rowNum: i + 2, _issues: issues, RollNo: rollNo, MessName: messName, SessionName: sessionName, Amount: amountRaw ?? '' });
+            } else {
+                validRows.push({ studentId: studentId!, messId: messId!, sessionId: sessionId!, amount });
             }
-
-            const messId = messMap.get(messName.toLowerCase());
-            const sessionId = sessionMap.get(sessionName.toLowerCase());
-
-            if (!messId) { errors.push(`Mess not found: ${messName}`); continue; }
-            if (!sessionId) { errors.push(`Session not found: ${sessionName}`); continue; }
-
-            const student = await prisma.student.findUnique({ where: { rollNo } });
-            if (!student) { errors.push(`Student not found: ${rollNo}`); continue; }
-
-            await prisma.studentMessAssignment.upsert({
-                where: { studentId_sessionId: { studentId: student.id, sessionId } },
-                update: { messId },
-                create: { studentId: student.id, messId, sessionId },
-            });
-            success++;
         }
 
-        return NextResponse.json({ message: `Processed ${success} assignments`, errors }, { status: 200 });
+        // Only upsert valid rows
+        for (const r of validRows) {
+            await prisma.studentMessAssignment.upsert({
+                where: { studentId_sessionId: { studentId: r.studentId, sessionId: r.sessionId } },
+                update: { messId: r.messId, amount: r.amount },
+                create: { studentId: r.studentId, messId: r.messId, sessionId: r.sessionId, amount: r.amount },
+            });
+            imported++;
+        }
+
+        return NextResponse.json({ imported, skipped: errorRows.length, errorRows }, { status: 200 });
     } catch (error) {
         console.error(error);
         return NextResponse.json({ error: 'Failed to process file' }, { status: 500 });

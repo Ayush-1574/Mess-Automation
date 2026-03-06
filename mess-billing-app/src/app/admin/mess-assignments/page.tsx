@@ -1,77 +1,17 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
+import { Button } from '../../../components/ui/Button';
+import { Select } from '../../../components/ui/Select';
+import { UploadWithErrors } from '../../../components/ui/UploadWithErrors';
 
-function UploadCard({
-    title,
-    accent,
-    onUpload,
-}: {
-    title: string;
-    accent: string;
-    onUpload: (file: File) => Promise<{ message?: string; errors?: string[]; error?: string }>;
-}) {
-    const [file, setFile] = useState<File | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<{ message?: string; errors?: string[]; error?: string } | null>(null);
-
-    const handleUpload = async () => {
-        if (!file) return;
-        setLoading(true);
-        setResult(null);
-        try {
-            const res = await onUpload(file);
-            setResult(res);
-            setFile(null);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <Card className="p-6">
-            <h2 className={`text-lg font-bold text-slate-800 mb-4 flex items-center gap-2`}>
-                <span className={`w-2 h-6 ${accent} rounded-full`}></span>{title}
-            </h2>
-            <div className="flex flex-col sm:flex-row gap-3 items-start">
-                <input
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={e => setFile(e.target.files?.[0] ?? null)}
-                    className="block text-sm text-slate-500 file:cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-colors"
-                />
-                <button
-                    onClick={handleUpload}
-                    disabled={!file || loading}
-                    className="shrink-0 bg-indigo-600 text-white font-bold px-5 py-2 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm"
-                >
-                    {loading ? 'Uploading…' : 'Upload Excel'}
-                </button>
-            </div>
-            {result && (
-                <div className={`mt-4 p-3 rounded-xl border text-sm ${result.error || (result.errors && result.errors.length > 0) ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
-                    {result.message && <p className="font-semibold text-slate-800">{result.message}</p>}
-                    {result.error && <p className="font-semibold text-rose-700">{result.error}</p>}
-                    {result.errors && result.errors.length > 0 && (
-                        <ul className="mt-2 space-y-1">
-                            {result.errors.map((e, i) => <li key={i} className="text-amber-700 text-xs font-medium">⚠ {e}</li>)}
-                        </ul>
-                    )}
-                </div>
-            )}
-            <p className="mt-3 text-xs text-slate-400 font-medium">
-                Required columns: <span className="font-mono font-semibold text-slate-500">RollNo, MessName, SessionName</span>
-            </p>
-        </Card>
-    );
-}
 
 export default function MessAssignmentsPage() {
     const [sessions, setSessions] = useState<any[]>([]);
     const [messes, setMesses] = useState<any[]>([]);
     const [assignments, setAssignments] = useState<any[]>([]);
     const [selectedSession, setSelectedSession] = useState('');
-    const [form, setForm] = useState({ rollNo: '', messId: '', sessionId: '' });
+    const [form, setForm] = useState({ rollNo: '', messId: '', sessionId: '', amount: '' });
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [fetching, setFetching] = useState(false);
@@ -99,12 +39,12 @@ export default function MessAssignmentsPage() {
             const res = await fetch('/api/mess-assignments', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form),
+                body: JSON.stringify({ ...form, amount: form.amount ? Number(form.amount) : 0 }),
             });
             const data = await res.json();
             if (res.ok) {
                 setMessage('Assignment saved!');
-                setForm(p => ({ ...p, rollNo: '' }));
+                setForm(p => ({ ...p, rollNo: '', amount: '' }));
                 if (selectedSession) fetchAssignments(selectedSession);
             } else setMessage(data.error || 'Failed');
         } catch { setMessage('Error'); }
@@ -117,28 +57,25 @@ export default function MessAssignmentsPage() {
         if (selectedSession) fetchAssignments(selectedSession);
     };
 
-    const handleBulkUpload = async (file: File) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        const res = await fetch('/api/upload-mess-assignments', { method: 'POST', body: formData });
-        const data = await res.json();
+    const handleBulkUpload = () => {
         if (selectedSession) fetchAssignments(selectedSession);
-        return data;
     };
+
+    const totalAmount = assignments.reduce((sum: number, a: any) => sum + (a.amount ?? 0), 0);
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
             <div>
                 <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Mess Assignments</h1>
-                <p className="text-slate-500 mt-2 font-medium">Assign students to a mess for a specific session.</p>
+                <p className="text-slate-500 mt-2 font-medium">Assign students to a mess and record fees for a specific session.</p>
             </div>
 
-            <Card className="p-6">
+            <Card className="p-6 relative z-40">
                 <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
                     <span className="w-2 h-6 bg-emerald-500 rounded-full"></span>New Assignment
                 </h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Roll Number</label>
                             <input value={form.rollNo} onChange={e => setForm(p => ({ ...p, rollNo: e.target.value }))}
@@ -147,43 +84,74 @@ export default function MessAssignmentsPage() {
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Session</label>
-                            <select value={form.sessionId} onChange={e => setForm(p => ({ ...p, sessionId: e.target.value }))} required
-                                className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 font-medium">
-                                <option value="">Select session</option>
-                                {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
+                            <Select
+                                theme="success"
+                                value={form.sessionId}
+                                onChange={val => setForm(p => ({ ...p, sessionId: String(val) }))}
+                                options={[{ label: 'Select session', value: '' }, ...sessions.map(s => ({ label: s.name, value: s.id }))]}
+                            />
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Mess</label>
-                            <select value={form.messId} onChange={e => setForm(p => ({ ...p, messId: e.target.value }))} required
-                                className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 font-medium">
-                                <option value="">Select mess</option>
-                                {messes.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                            </select>
+                            <Select
+                                theme="success"
+                                value={form.messId}
+                                onChange={val => setForm(p => ({ ...p, messId: String(val) }))}
+                                options={[{ label: 'Select mess', value: '' }, ...messes.map(m => ({ label: m.name, value: m.id }))]}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Fees Deposited (₹)</label>
+                            <input value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
+                                placeholder="0.00" type="number" min="0" step="0.01"
+                                className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 font-medium" />
                         </div>
                     </div>
-                    <button type="submit" disabled={loading}
-                        className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50">
+                    <Button type="submit" isLoading={loading} disabled={loading} variant="success" className="w-full py-3">
                         {loading ? 'Saving…' : 'Save Assignment'}
-                    </button>
+                    </Button>
                 </form>
                 {message && <p className={`mt-3 text-sm font-semibold ${message.includes('!') ? 'text-emerald-600' : 'text-rose-600'}`}>{message}</p>}
             </Card>
 
-            <UploadCard
-                title="Bulk Upload via Excel"
-                accent="bg-indigo-500"
-                onUpload={handleBulkUpload}
-            />
+            <Card className="p-6 relative z-30">
+                <h2 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+                    <span className="w-2 h-6 bg-indigo-500 rounded-full" />Bulk Upload via Excel
+                </h2>
+                <p className="text-xs text-slate-400 font-medium mb-4">Required columns: <span className="font-mono font-semibold text-slate-500">RollNo, MessName, SessionName, Amount</span></p>
+                <UploadWithErrors
+                    endpoint="/api/upload-mess-assignments"
+                    accent="indigo"
+                    uploadLabel="Upload Assignments Excel"
+                    errorColumns={[
+                        { key: 'RollNo', label: 'RollNo' },
+                        { key: 'MessName', label: 'MessName' },
+                        { key: 'SessionName', label: 'SessionName' },
+                        { key: 'Amount', label: 'Amount' },
+                    ]}
+                    hints={{ MessName: messes.map((m: any) => m.name), SessionName: sessions.map((s: any) => s.name) }}
+                    onSuccess={handleBulkUpload}
+                />
+            </Card>
 
-            <Card className="p-0 overflow-hidden">
+            <Card className="p-0 overflow-hidden relative z-20">
                 <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                    <h2 className="text-lg font-bold text-slate-800">View by Session</h2>
-                    <select value={selectedSession} onChange={e => setSelectedSession(e.target.value)}
-                        className="border border-slate-200 bg-white px-3 py-2 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
-                        <option value="">-- Select session --</option>
-                        {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-800">View by Session</h2>
+                        {assignments.length > 0 && (
+                            <p className="text-sm text-teal-600 font-bold mt-0.5">
+                                Total Fees: ₹{totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </p>
+                        )}
+                    </div>
+                    <div className="w-48">
+                        <Select
+                            theme="success"
+                            value={selectedSession}
+                            onChange={val => setSelectedSession(String(val))}
+                            options={[{ label: '-- Select session --', value: '' }, ...sessions.map(s => ({ label: s.name, value: s.id }))]}
+                        />
+                    </div>
                 </div>
                 {fetching ? (
                     <div className="p-8 text-center text-slate-400">Loading…</div>
@@ -198,6 +166,7 @@ export default function MessAssignmentsPage() {
                                 <th className="p-4 text-left">Roll No</th>
                                 <th className="p-4 text-left">Student</th>
                                 <th className="p-4 text-left">Mess</th>
+                                <th className="p-4 text-right">Fees (₹)</th>
                                 <th className="p-4 text-right pr-6">Action</th>
                             </tr>
                         </thead>
@@ -209,13 +178,24 @@ export default function MessAssignmentsPage() {
                                     <td className="p-4">
                                         <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-bold">{a.mess.name}</span>
                                     </td>
+                                    <td className="p-4 text-right font-bold text-teal-700">
+                                        ₹{(a.amount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    </td>
                                     <td className="p-4 text-right pr-6">
-                                        <button onClick={() => handleDelete(a.id)}
-                                            className="text-rose-600 text-xs font-bold px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 transition-colors">Remove</button>
+                                        <Button variant="danger" size="sm" onClick={() => handleDelete(a.id)}>Remove</Button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
+                        <tfoot>
+                            <tr className="bg-teal-50/50 border-t-2 border-teal-100">
+                                <td colSpan={3} className="p-4 font-bold text-slate-700 text-xs uppercase tracking-wide">Total</td>
+                                <td className="p-4 text-right font-extrabold text-teal-800 text-base">
+                                    ₹{totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
                     </table>
                 )}
             </Card>

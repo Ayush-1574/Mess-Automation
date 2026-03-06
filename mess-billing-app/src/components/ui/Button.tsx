@@ -1,7 +1,7 @@
 import React from 'react';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
+    variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost' | 'success' | 'warning';
     size?: 'sm' | 'md' | 'lg';
     isLoading?: boolean;
 }
@@ -16,14 +16,16 @@ export function Button({
     ...props
 }: ButtonProps) {
 
-    const baseStyles = 'inline-flex items-center justify-center font-bold active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-300 hover:-translate-y-0.5';
+    const baseStyles = 'inline-flex items-center justify-center font-bold active:translate-y-1 active:border-b-0 active:mb-1 disabled:opacity-50 disabled:pointer-events-none rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-150';
 
     const variants = {
-        primary: 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-200/50 hover:shadow-xl hover:shadow-indigo-300/50 focus:ring-indigo-500',
-        secondary: 'bg-white/30 backdrop-blur-lg text-indigo-700 hover:bg-white/50 hover:text-indigo-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 hover:shadow-lg focus:ring-indigo-500',
-        outline: 'bg-white/10 backdrop-blur-md text-slate-700 border border-white/40 hover:bg-white/30 hover:shadow-lg focus:ring-slate-500',
-        danger: 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-600 hover:text-white rounded-xl shadow-sm hover:shadow-rose-200 hover:shadow-md focus:ring-rose-500',
-        ghost: 'bg-transparent text-slate-600 hover:bg-slate-100/50 hover:text-slate-900 focus:ring-slate-500 hover:shadow-sm'
+        primary: 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-b-4 border-indigo-300 focus:ring-indigo-500',
+        secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-b-4 border-slate-300 focus:ring-slate-500',
+        outline: 'bg-white text-slate-700 border-t border-x border-slate-200 border-b-4 border-slate-300 hover:bg-slate-50 focus:ring-slate-500',
+        danger: 'bg-rose-100 text-rose-700 hover:bg-rose-200 border-b-4 border-rose-300 focus:ring-rose-500',
+        success: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-b-4 border-emerald-300 focus:ring-emerald-500',
+        warning: 'bg-amber-100 text-amber-700 hover:bg-amber-200 border-b-4 border-amber-300 focus:ring-amber-500',
+        ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-b-4 border-transparent hover:border-slate-200 focus:ring-slate-500'
     };
 
 

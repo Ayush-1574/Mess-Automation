@@ -3,8 +3,8 @@ import { prisma } from '@/lib/prisma';
 import * as XLSX from 'xlsx';
 
 // POST /api/upload-monthly-rebates
-// Form fields: sessionId, month, year, hostel, messId
-// Excel columns: RollNo, StudentName, RebateDays, MessRate, GSTPercentage
+// Form fields: sessionId, month, year, messId (optional)
+// Excel columns: RollNo, RebateDays, MessRate (optional), GSTPercentage (optional)
 export async function POST(request: Request) {
     try {
         const formData = await request.formData();
@@ -15,92 +15,88 @@ export async function POST(request: Request) {
         const formMessId = formData.get('messId') ? Number(formData.get('messId')) : null;
 
         if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
-        if (!sessionId || !month || !year) {
-            return NextResponse.json({ error: 'sessionId, month, and year are required' }, { status: 400 });
-        }
-        if (month < 1 || month > 12) {
-            return NextResponse.json({ error: 'month must be between 1 and 12' }, { status: 400 });
-        }
+        if (!sessionId || !month || !year) return NextResponse.json({ error: 'sessionId, month, and year are required' }, { status: 400 });
+        if (month < 1 || month > 12) return NextResponse.json({ error: 'month must be between 1 and 12' }, { status: 400 });
 
         const buffer = new Uint8Array(await file.arrayBuffer());
         const workbook = XLSX.read(buffer, { type: 'array' });
         const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]) as any[];
 
-        let success = 0;
-        const errors: string[] = [];
+        const allStudents = await prisma.student.findMany({ select: { id: true, rollNo: true, courseId: true } });
+        const studentMap = new Map(allStudents.map(s => [s.rollNo.toLowerCase(), s]));
 
-        for (const row of jsonData) {
+        let imported = 0;
+        const errorRows: any[] = [];
+        const validRows: any[] = [];
+
+        for (let i = 0; i < jsonData.length; i++) {
+            const row = jsonData[i];
+            const issues: string[] = [];
+
             const rollNo = String(row.RollNo ?? '').trim();
             const rebateDays = Number(row.RebateDays);
             const messRate = row.MessRate != null ? Number(row.MessRate) : null;
             const gstPercentage = row.GSTPercentage != null ? Number(row.GSTPercentage) : null;
 
-            if (!rollNo || isNaN(rebateDays)) {
-                errors.push(`Row missing or invalid: ${JSON.stringify(row)}`);
-                continue;
+            if (!rollNo) issues.push('RollNo is missing');
+            if (!row.RebateDays && row.RebateDays !== 0) issues.push('RebateDays is missing');
+            else if (isNaN(rebateDays) || rebateDays < 0) issues.push(`RebateDays "${row.RebateDays}" is invalid (must be 0 or more)`);
+
+            const student = rollNo ? studentMap.get(rollNo.toLowerCase()) : undefined;
+            if (rollNo && !student) issues.push(`Student with RollNo "${rollNo}" not found`);
+
+            if (issues.length > 0) {
+                errorRows.push({
+                    _rowNum: i + 2, _issues: issues,
+                    RollNo: rollNo,
+                    RebateDays: row.RebateDays ?? '',
+                    MessRate: row.MessRate ?? '',
+                    GSTPercentage: row.GSTPercentage ?? '',
+                });
+            } else {
+                validRows.push({ rollNo, student: student!, rebateDays, messRate, gstPercentage });
             }
+        }
 
-            const student = await prisma.student.findUnique({
-                where: { rollNo },
-                include: { course: true }
-            });
-            if (!student) { errors.push(`Student not found: ${rollNo}`); continue; }
-
-            // Upsert the monthly rebate
+        // Process valid rows
+        for (const r of validRows) {
             await prisma.monthlyRebate.upsert({
-                where: { studentId_sessionId_month_year: { studentId: student.id, sessionId, month, year } },
-                update: { rebateDays },
-                create: { studentId: student.id, sessionId, month, year, rebateDays },
+                where: { studentId_sessionId_month_year: { studentId: r.student.id, sessionId, month, year } },
+                update: { rebateDays: r.rebateDays },
+                create: { studentId: r.student.id, sessionId, month, year, rebateDays: r.rebateDays },
             });
-            success++;
+            imported++;
 
-            // Ensure the student has a mess assignment for this session.
-            // If one doesn't exist and a messId was selected in the form, create it.
+            // Ensure mess assignment
             let resolvedMessId: number | null = null;
             if (formMessId) {
                 const assignment = await prisma.studentMessAssignment.upsert({
-                    where: { studentId_sessionId: { studentId: student.id, sessionId } },
-                    update: {},   // don't overwrite an existing assignment's mess
-                    create: { studentId: student.id, messId: formMessId, sessionId },
+                    where: { studentId_sessionId: { studentId: r.student.id, sessionId } },
+                    update: {},
+                    create: { studentId: r.student.id, messId: formMessId, sessionId },
                 });
                 resolvedMessId = assignment.messId;
             } else {
                 const assignment = await prisma.studentMessAssignment.findUnique({
-                    where: { studentId_sessionId: { studentId: student.id, sessionId } }
+                    where: { studentId_sessionId: { studentId: r.student.id, sessionId } }
                 });
                 resolvedMessId = assignment?.messId ?? null;
             }
 
-            // Upsert MessRate if MessRate or GSTPercentage column is provided in Excel
-            if ((messRate != null || gstPercentage != null) && student.courseId && resolvedMessId) {
+            // Upsert MessRate if columns provided
+            if ((r.messRate != null || r.gstPercentage != null) && r.student.courseId && resolvedMessId) {
                 await prisma.messRate.upsert({
-                    where: {
-                        messId_courseId_sessionId_month: {
-                            messId: resolvedMessId,
-                            courseId: student.courseId,
-                            sessionId,
-                            month,
-                        }
-                    },
+                    where: { messId_courseId_sessionId_month: { messId: resolvedMessId, courseId: r.student.courseId, sessionId, month } },
                     update: {
-                        ...(messRate != null ? { monthlyRate: messRate } : {}),
-                        ...(gstPercentage != null ? { gstPercentage } : {}),
+                        ...(r.messRate != null ? { monthlyRate: r.messRate } : {}),
+                        ...(r.gstPercentage != null ? { gstPercentage: r.gstPercentage } : {}),
                     },
-                    create: {
-                        messId: resolvedMessId,
-                        courseId: student.courseId,
-                        sessionId,
-                        month,
-                        monthlyRate: messRate ?? 0,
-                        gstPercentage: gstPercentage ?? 0,
-                    },
+                    create: { messId: resolvedMessId, courseId: r.student.courseId, sessionId, month, monthlyRate: r.messRate ?? 0, gstPercentage: r.gstPercentage ?? 0 },
                 });
-            } else if ((messRate != null || gstPercentage != null) && !resolvedMessId) {
-                errors.push(`${rollNo}: no mess selected or assigned — MessRate not saved`);
             }
         }
 
-        return NextResponse.json({ message: `Processed ${success} rebate entries`, errors }, { status: 200 });
+        return NextResponse.json({ imported, skipped: errorRows.length, errorRows }, { status: 200 });
     } catch (error) {
         console.error(error);
         return NextResponse.json({ error: 'Failed to process file' }, { status: 500 });

@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
+import { Button } from '../../../components/ui/Button';
 
 export default function PermissionsPage() {
     const [students, setStudents] = useState<any[]>([]);
@@ -19,7 +20,7 @@ export default function PermissionsPage() {
             const data = await res.json();
             if (Array.isArray(data)) setStudents(data);
             else setError('Invalid data received');
-        } catch (error) {
+        } catch {
             setError('Failed to load students. Please restart the server.');
         } finally {
             setLoading(false);
@@ -67,11 +68,9 @@ export default function PermissionsPage() {
 
     return (
         <div className="max-w-[1200px] mx-auto space-y-6 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Access Control</h1>
-                    <p className="text-slate-500 mt-1 font-medium">Manage student permissions for bank detail editing.</p>
-                </div>
+            <div>
+                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Access Control</h1>
+                <p className="text-slate-500 mt-1 font-medium">Manage student permissions for bank detail editing.</p>
             </div>
 
             {error && (
@@ -94,16 +93,16 @@ export default function PermissionsPage() {
                             value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
                     <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                        <button onClick={() => handleBulkAction(false)} disabled={selectedStudents.length === 0 || actionLoading || loading}
-                            className="flex-1 sm:flex-none bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white border border-rose-200 hover:border-transparent px-4 py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2">
+                        <Button onClick={() => handleBulkAction(false)} disabled={selectedStudents.length === 0 || actionLoading || loading}
+                            variant="danger" className="flex-1 sm:flex-none shadow-[none] h-auto py-2.5 gap-2 px-4 rounded-xl text-sm">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                             Freeze <span className="opacity-80">({selectedStudents.length})</span>
-                        </button>
-                        <button onClick={() => handleBulkAction(true)} disabled={selectedStudents.length === 0 || actionLoading || loading}
-                            className="flex-1 sm:flex-none bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-200 hover:border-transparent px-4 py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2">
+                        </Button>
+                        <Button onClick={() => handleBulkAction(true)} disabled={selectedStudents.length === 0 || actionLoading || loading}
+                            variant="success" className="flex-1 sm:flex-none shadow-[none] h-auto py-2.5 gap-2 px-4 rounded-xl text-sm">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
                             Allow <span className="opacity-80">({selectedStudents.length})</span>
-                        </button>
+                        </Button>
                     </div>
                 </div>
 
@@ -125,60 +124,50 @@ export default function PermissionsPage() {
                                     <th className="p-4">Roll No</th>
                                     <th className="p-4">Name</th>
                                     <th className="p-4">Course</th>
-                                    <th className="p-4">Mess</th>
                                     <th className="p-4">Hostel</th>
                                     <th className="p-4 text-center">Status</th>
                                     <th className="p-4 text-right pr-6">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {filteredStudents.map((student: any) => {
-                                    const latestAssignment = student.messAssignments?.[0];
-                                    return (
-                                        <tr key={student.id} className="hover:bg-indigo-50/30 transition-colors group">
-                                            <td className="p-4 indent-4">
-                                                <input type="checkbox"
-                                                    checked={selectedStudents.includes(student.id)}
-                                                    onChange={() => setSelectedStudents(prev => prev.includes(student.id) ? prev.filter(id => id !== student.id) : [...prev, student.id])}
-                                                    className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
-                                            </td>
-                                            <td className="p-4 font-bold text-slate-800">{student.rollNo}</td>
-                                            <td className="p-4 font-medium text-slate-700">{student.name}</td>
-                                            <td className="p-4">
-                                                {student.course ? (
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">{student.course.name}</span>
-                                                ) : <span className="text-slate-400">-</span>}
-                                            </td>
-                                            <td className="p-4 text-slate-600">
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                                                    {latestAssignment?.mess?.name || '-'}
-                                                </span>
-                                            </td>
-                                            <td className="p-4 text-slate-600">{student.hostel || '-'}</td>
-                                            <td className="p-4 text-center">
-                                                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${student.isBankEditable ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full ${student.isBankEditable ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-                                                    {student.isBankEditable ? 'Allowed' : 'Frozen'}
-                                                </div>
-                                            </td>
-                                            <td className="p-4 text-right pr-6">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <button onClick={() => togglePermission(student.id, student.isBankEditable)}
-                                                        className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-colors ${student.isBankEditable ? 'bg-rose-100 text-rose-700 hover:bg-rose-600 hover:text-white' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white'}`}>
-                                                        {student.isBankEditable ? 'Freeze' : 'Allow'}
-                                                    </button>
-                                                    <a href={`/admin/students/${student.id}`}
-                                                        className="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-600 hover:text-white transition-colors inline-flex items-center gap-1">
-                                                        Details
-                                                    </a>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
+                                {filteredStudents.map((student: any) => (
+                                    <tr key={student.id} className="hover:bg-indigo-50/30 transition-colors">
+                                        <td className="p-4 indent-4">
+                                            <input type="checkbox"
+                                                checked={selectedStudents.includes(student.id)}
+                                                onChange={() => setSelectedStudents(prev => prev.includes(student.id) ? prev.filter(id => id !== student.id) : [...prev, student.id])}
+                                                className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+                                        </td>
+                                        <td className="p-4 font-bold text-slate-800">{student.rollNo}</td>
+                                        <td className="p-4 font-medium text-slate-700">{student.name}</td>
+                                        <td className="p-4">
+                                            {student.course
+                                                ? <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">{student.course.name}</span>
+                                                : <span className="text-slate-400">-</span>}
+                                        </td>
+                                        <td className="p-4 text-slate-600">{student.hostel || '-'}</td>
+                                        <td className="p-4 text-center">
+                                            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${student.isBankEditable ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${student.isBankEditable ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                                                {student.isBankEditable ? 'Allowed' : 'Frozen'}
+                                            </div>
+                                        </td>
+                                        <td className="p-4 text-right pr-6">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Button variant={student.isBankEditable ? 'danger' : 'success'} size="sm" onClick={() => togglePermission(student.id, student.isBankEditable)}>
+                                                    {student.isBankEditable ? 'Freeze' : 'Allow'}
+                                                </Button>
+                                                <a href={`/admin/students/${student.id}`}
+                                                    className="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-200 transition-colors inline-flex items-center gap-1">
+                                                    Details
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
                                 {filteredStudents.length === 0 && (
                                     <tr>
-                                        <td colSpan={8} className="p-10 text-center text-slate-500">
+                                        <td colSpan={7} className="p-10 text-center text-slate-500">
                                             <p className="text-lg font-medium text-slate-700">No students found</p>
                                         </td>
                                     </tr>

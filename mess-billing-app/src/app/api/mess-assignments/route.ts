@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     try {
-        const { rollNo, messId, sessionId } = await request.json();
+        const { rollNo, messId, sessionId, amount } = await request.json();
         if (!rollNo || !messId || !sessionId) {
             return NextResponse.json({ error: 'rollNo, messId and sessionId are required' }, { status: 400 });
         }
@@ -38,8 +38,8 @@ export async function POST(request: Request) {
 
         const assignment = await prisma.studentMessAssignment.upsert({
             where: { studentId_sessionId: { studentId: student.id, sessionId: Number(sessionId) } },
-            update: { messId: Number(messId) },
-            create: { studentId: student.id, messId: Number(messId), sessionId: Number(sessionId) },
+            update: { messId: Number(messId), ...(amount !== undefined ? { amount: Number(amount) } : {}) },
+            create: { studentId: student.id, messId: Number(messId), sessionId: Number(sessionId), amount: amount !== undefined ? Number(amount) : 0 },
             include: { student: true, mess: true, session: true }
         });
         return NextResponse.json(assignment, { status: 201 });

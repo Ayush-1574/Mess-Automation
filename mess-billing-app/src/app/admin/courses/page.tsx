@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
+import { Button } from '../../../components/ui/Button';
 
 export default function CoursesPage() {
     const [courses, setCourses] = useState<any[]>([]);
@@ -63,10 +64,9 @@ export default function CoursesPage() {
                         required
                         className="flex-1 border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 font-medium"
                     />
-                    <button type="submit" disabled={loading}
-                        className="bg-indigo-600 text-white font-bold px-5 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50">
+                    <Button type="submit" variant="primary" isLoading={loading} disabled={loading}>
                         {loading ? 'Adding…' : 'Add'}
-                    </button>
+                    </Button>
                 </form>
                 {message && (
                     <p className={`mt-3 text-sm font-semibold ${message.includes('!') || message.includes('deleted') ? 'text-emerald-600' : 'text-rose-600'}`}>{message}</p>
@@ -96,10 +96,9 @@ export default function CoursesPage() {
                                     <td className="p-4 text-slate-400 font-medium">{i + 1}</td>
                                     <td className="p-4 font-bold text-slate-800">{c.name}</td>
                                     <td className="p-4 text-right pr-6">
-                                        <button onClick={() => handleDelete(c.id)}
-                                            className="text-rose-600 hover:text-rose-800 text-xs font-bold px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 transition-colors">
+                                        <Button variant="danger" size="sm" onClick={() => handleDelete(c.id)}>
                                             Delete
-                                        </button>
+                                        </Button>
                                     </td>
                                 </tr>
                             ))}

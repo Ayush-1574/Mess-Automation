@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
         const sessionId = searchParams.get('sessionId');
-        const monthParam = searchParams.get('month'); // number 1-12 or "all"
+        const monthParam = searchParams.get('month');
         const yearParam = searchParams.get('year');
 
         if (!sessionId) {
@@ -36,9 +36,6 @@ export async function GET(request: Request) {
                                 sessionId: sessionIdNum,
                                 ...(isAllMonths ? {} : { month: singleMonth!, year }),
                             },
-                        },
-                        feesDeposited: {
-                            where: { sessionId: sessionIdNum },
                         },
                     },
                 },
@@ -75,7 +72,7 @@ export async function GET(request: Request) {
             }
 
             const student = a.student;
-            const totalFees = student.feesDeposited.reduce((sum, f) => sum + f.amount, 0);
+            const feesDeposited = a.amount ?? 0;
             let totalAmount = 0;
 
             const monthBreakdown: any = {};
@@ -112,8 +109,8 @@ export async function GET(request: Request) {
                 'Session': a.session.name,
                 ...monthBreakdown,
                 'Total Amount (₹)': parseFloat(totalAmount.toFixed(2)),
-                'Total Fees Deposited (₹)': parseFloat(totalFees.toFixed(2)),
-                'Balance (₹)': parseFloat((totalFees - totalAmount).toFixed(2)),
+                'Fees Deposited (₹)': parseFloat(feesDeposited.toFixed(2)),
+                'Balance (₹)': parseFloat((feesDeposited - totalAmount).toFixed(2)),
             });
         });
 

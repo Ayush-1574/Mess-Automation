@@ -37,9 +37,6 @@ export async function GET(request: Request) {
                 monthlyRebates: {
                     where: { sessionId: sessionIdNum },
                 },
-                feesDeposited: {
-                    where: { sessionId: sessionIdNum },
-                },
             },
             orderBy: { rollNo: 'asc' },
         });
@@ -52,7 +49,7 @@ export async function GET(request: Request) {
 
         const data = students.map((student) => {
             const assignment = student.messAssignments[0];
-            const totalFees = student.feesDeposited.reduce((sum, f) => sum + f.amount, 0);
+            const totalFees = assignment?.amount ?? 0;
 
             const row: any = {
                 'Roll No': student.rollNo,
@@ -91,7 +88,7 @@ export async function GET(request: Request) {
             }
 
             row['Total Amount (₹)'] = parseFloat(totalAmount.toFixed(2));
-            row['Total Fees Deposited (₹)'] = parseFloat(totalFees.toFixed(2));
+            row['Fees Deposited (₹)'] = parseFloat(totalFees.toFixed(2));
             row['Balance (₹)'] = parseFloat((totalFees - totalAmount).toFixed(2));
             return row;
         });

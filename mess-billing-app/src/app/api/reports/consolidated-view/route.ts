@@ -11,24 +11,22 @@ export async function GET(request: Request) {
                 course: true,
                 messAssignments: {
                     include: { mess: true, session: true },
-                    ...(sessionId ? { where: { sessionId: Number(sessionId) } } : {})
+                    ...(sessionId ? { where: { sessionId: Number(sessionId) } } : {}),
+                    orderBy: { session: { startYear: 'desc' } },
                 },
                 monthlyRebates: {
                     include: { session: true },
-                    ...(sessionId ? { where: { sessionId: Number(sessionId) } } : {})
-                },
-                feesDeposited: {
-                    include: { session: true },
-                    ...(sessionId ? { where: { sessionId: Number(sessionId) } } : {})
+                    ...(sessionId ? { where: { sessionId: Number(sessionId) } } : {}),
                 },
             },
             orderBy: { rollNo: 'asc' }
         });
 
         const reportData = students.map(s => {
-            const totalFees = s.feesDeposited.reduce((sum, f) => sum + f.amount, 0);
             const totalRebateDays = s.monthlyRebates.reduce((sum, r) => sum + r.rebateDays, 0);
             const currentAssignment = s.messAssignments[0];
+            // Sum up fees from mess assignment amounts
+            const totalFeesDeposited = s.messAssignments.reduce((sum, a) => sum + (a.amount ?? 0), 0);
 
             return {
                 id: s.id,
@@ -42,10 +40,10 @@ export async function GET(request: Request) {
                 bankName: s.bankName,
                 ifsc: s.ifsc,
                 messSecurity: s.messSecurity,
-                totalFeesDeposited: totalFees,
+                totalFeesDeposited,
                 totalRebateDays,
                 monthlyRebates: s.monthlyRebates,
-                feesDeposited: s.feesDeposited,
+                messAssignments: s.messAssignments,
             };
         });
 

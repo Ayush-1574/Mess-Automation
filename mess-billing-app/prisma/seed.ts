@@ -9,22 +9,52 @@ async function main() {
 
     console.log('Start seeding ...');
 
-    // Seed Messes
-    for (const name of messes) {
-        await prisma.mess.upsert({
+    // Seed Courses
+    const courses = [];
+    for (const name of ['BTech', 'MTech', 'PhD']) {
+        const course = await prisma.course.upsert({
             where: { name },
             update: {},
-            create: { name, baseRate: 150.0 },
-        })
+            create: { name },
+        });
+        courses.push(course);
+    }
+
+    // Seed Session
+    const session = await prisma.session.upsert({
+        where: { name: '2026-I' },
+        update: {},
+        create: { name: '2026-I', startYear: 2026, semester: 'I' },
+    });
+
+    // Seed Messes
+    const messesData = [];
+    for (const name of messes) {
+        const mess = await prisma.mess.upsert({
+            where: { name },
+            update: {},
+            create: { name },
+        });
+        messesData.push(mess);
+    }
+
+    // Seed Mess Rates
+    for (const mess of messesData) {
+        for (const course of courses) {
+            await prisma.messRate.upsert({
+                where: { messId_courseId_sessionId_month: { messId: mess.id, courseId: course.id, sessionId: session.id, month: 1 } },
+                update: {},
+                create: { messId: mess.id, courseId: course.id, sessionId: session.id, month: 1, monthlyRate: 150.0 },
+            });
+        }
     }
 
     // Seed Students
     for (let i = 0; i < 30; i++) {
         const batch = batches[i % batches.length];
-
-        // Distribute messed and hostels
-        const mess = messes[i % messes.length];
         const hostel = hostels[i % hostels.length];
+        const mess = messesData[i % messesData.length];
+        const course = courses[i % courses.length];
 
         const seq = 1100 + i;
         const rollNo = `${batch}CSB${seq}`;
@@ -38,33 +68,21 @@ async function main() {
                 name,
                 batch,
                 hostel,
-                mess,
                 email: `${rollNo.toLowerCase()}@example.com`,
                 bankAccountNo: `SBI${rollNo}`,
                 bankName: 'SBI',
-                ifsc: 'SBIN0001234'
+                ifsc: 'SBIN0001234',
+                courseId: course.id
             }
         });
 
-        // Create Bill
-        await prisma.bill.upsert({
+        // Create Mess Assignment
+        await prisma.studentMessAssignment.upsert({
             where: {
-                studentId_month_year: {
-                    studentId: student.id,
-                    month: 'January',
-                    year: 2026
-                }
+                studentId_sessionId: { studentId: student.id, sessionId: session.id }
             },
             update: {},
-            create: {
-                studentId: student.id,
-                month: 'January',
-                year: 2026,
-                totalDays: 31,
-                ratePerDay: 150,
-                totalAmount: 4650,
-                isPaid: false
-            }
+            create: { studentId: student.id, messId: mess.id, sessionId: session.id }
         });
     }
 

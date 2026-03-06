@@ -7,6 +7,7 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
 
 export default function MonthlyRebatesPage() {
     const [sessions, setSessions] = useState<any[]>([]);
+    const [messes, setMesses] = useState<any[]>([]);
     const [rebates, setRebates] = useState<any[]>([]);
     const [selectedSession, setSelectedSession] = useState('');
     const [form, setForm] = useState({
@@ -19,8 +20,20 @@ export default function MonthlyRebatesPage() {
     const [message, setMessage] = useState('');
     const [fetching, setFetching] = useState(false);
 
+    // Bulk upload state
+    const [showBulkPanel, setShowBulkPanel] = useState(false);
+    const [bulkForm, setBulkForm] = useState({
+        sessionId: '', messId: '', hostel: '',
+        month: String(new Date().getMonth() + 1),
+        year: String(new Date().getFullYear()),
+    });
+    const [bulkFile, setBulkFile] = useState<File | null>(null);
+    const [bulkLoading, setBulkLoading] = useState(false);
+    const [bulkResult, setBulkResult] = useState<{ message?: string; errors?: string[]; error?: string } | null>(null);
+
     useEffect(() => {
         fetch('/api/sessions').then(r => r.json()).then(d => setSessions(Array.isArray(d) ? d : []));
+        fetch('/api/messes').then(r => r.json()).then(d => setMesses(Array.isArray(d) ? d : []));
     }, []);
 
     const fetchRebates = async (sessionId: string) => {
@@ -58,12 +71,125 @@ export default function MonthlyRebatesPage() {
         if (selectedSession) fetchRebates(selectedSession);
     };
 
+    const handleBulkUpload = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!bulkFile) return;
+        setBulkLoading(true);
+        setBulkResult(null);
+        try {
+            const formData = new FormData();
+            formData.append('file', bulkFile);
+            formData.append('sessionId', bulkForm.sessionId);
+            formData.append('month', bulkForm.month);
+            formData.append('year', bulkForm.year);
+            formData.append('hostel', bulkForm.hostel);
+            formData.append('messId', bulkForm.messId);
+            const res = await fetch('/api/upload-monthly-rebates', { method: 'POST', body: formData });
+            const data = await res.json();
+            setBulkResult(data);
+            setBulkFile(null);
+            if (selectedSession) fetchRebates(selectedSession);
+        } finally {
+            setBulkLoading(false);
+        }
+    };
+
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
-            <div>
-                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Monthly Rebates</h1>
-                <p className="text-slate-500 mt-2 font-medium">Record rebate days granted to students per month.</p>
+            <div className="flex items-start justify-between">
+                <div>
+                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Monthly Rebates</h1>
+                    <p className="text-slate-500 mt-2 font-medium">Record rebate days granted to students per month.</p>
+                </div>
+                <button
+                    onClick={() => { setShowBulkPanel(p => !p); setBulkResult(null); }}
+                    className="flex items-center gap-2 bg-indigo-600 text-white font-bold px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors text-sm shadow-lg shadow-indigo-200"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                    {showBulkPanel ? 'Close Bulk Upload' : 'Bulk Upload'}
+                </button>
             </div>
+
+            {/* Bulk Upload Panel */}
+            {showBulkPanel && (
+                <Card className="p-6 border-2 border-indigo-100 bg-indigo-50/30">
+                    <h2 className="text-lg font-bold text-slate-800 mb-5 flex items-center gap-2">
+                        <span className="w-2 h-6 bg-indigo-500 rounded-full"></span>Bulk Rebate Upload
+                        <span className="ml-auto text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">Select context below, then upload Excel</span>
+                    </h2>
+                    <form onSubmit={handleBulkUpload} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Session</label>
+                                <select value={bulkForm.sessionId} onChange={e => setBulkForm(p => ({ ...p, sessionId: e.target.value }))} required
+                                    className="w-full border border-slate-200 bg-white px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
+                                    <option value="">Select session</option>
+                                    {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Mess</label>
+                                <select value={bulkForm.messId} onChange={e => setBulkForm(p => ({ ...p, messId: e.target.value }))} required
+                                    className="w-full border border-slate-200 bg-white px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
+                                    <option value="">Select mess</option>
+                                    {messes.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Hostel</label>
+                                <input
+                                    value={bulkForm.hostel}
+                                    onChange={e => setBulkForm(p => ({ ...p, hostel: e.target.value }))}
+                                    placeholder="e.g. Chenab"
+                                    className="w-full border border-slate-200 bg-white px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Month</label>
+                                <select value={bulkForm.month} onChange={e => setBulkForm(p => ({ ...p, month: e.target.value }))} required
+                                    className="w-full border border-slate-200 bg-white px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
+                                    {MONTH_NAMES.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Year</label>
+                                <input type="number" value={bulkForm.year} onChange={e => setBulkForm(p => ({ ...p, year: e.target.value }))} required min="2000" max="2100"
+                                    className="w-full border border-slate-200 bg-white px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Excel File</label>
+                                <input
+                                    type="file"
+                                    accept=".xlsx,.xls"
+                                    onChange={e => setBulkFile(e.target.files?.[0] ?? null)}
+                                    required
+                                    className="block w-full text-sm text-slate-500 file:cursor-pointer file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-colors"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <button type="submit" disabled={!bulkFile || bulkLoading}
+                                className="bg-indigo-600 text-white font-bold px-6 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm">
+                                {bulkLoading ? 'Processing…' : 'Upload & Process'}
+                            </button>
+                            <p className="text-xs text-slate-500 font-medium">
+                                Excel columns: <span className="font-mono font-semibold text-slate-600">RollNo, StudentName, RebateDays, MessRate, GSTPercentage</span>
+                            </p>
+                        </div>
+                    </form>
+                    {bulkResult && (
+                        <div className={`mt-4 p-3 rounded-xl border text-sm ${bulkResult.error || (bulkResult.errors && bulkResult.errors.length > 0) ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                            {bulkResult.message && <p className="font-semibold text-slate-800">{bulkResult.message}</p>}
+                            {bulkResult.error && <p className="font-semibold text-rose-700">{bulkResult.error}</p>}
+                            {bulkResult.errors && bulkResult.errors.length > 0 && (
+                                <ul className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                                    {bulkResult.errors.map((e, i) => <li key={i} className="text-amber-700 text-xs font-medium">⚠ {e}</li>)}
+                                </ul>
+                            )}
+                        </div>
+                    )}
+                </Card>
+            )}
 
             <Card className="p-6">
                 <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">

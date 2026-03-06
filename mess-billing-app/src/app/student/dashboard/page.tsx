@@ -1,9 +1,9 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { Card } from '../../../components/ui/Card';
 
-export default function StudentDashboard() {
+function DashboardContent() {
     const searchParams = useSearchParams();
     const id = searchParams.get('id');
 
@@ -153,5 +153,13 @@ export default function StudentDashboard() {
                 </div>
             </Card>
         </div>
+    );
+}
+
+export default function StudentDashboard() {
+    return (
+        <Suspense fallback={<div className="text-center mt-10">Loading dashboard...</div>}>
+            <DashboardContent />
+        </Suspense>
     );
 }

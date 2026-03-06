@@ -11,6 +11,11 @@ export default function FeesPage() {
     const [message, setMessage] = useState('');
     const [fetching, setFetching] = useState(false);
 
+    // Bulk upload state
+    const [bulkFile, setBulkFile] = useState<File | null>(null);
+    const [bulkLoading, setBulkLoading] = useState(false);
+    const [bulkResult, setBulkResult] = useState<{ message?: string; errors?: string[]; error?: string } | null>(null);
+
     useEffect(() => {
         fetch('/api/sessions').then(r => r.json()).then(d => setSessions(Array.isArray(d) ? d : []));
     }, []);
@@ -48,6 +53,23 @@ export default function FeesPage() {
         if (!confirm('Delete this payment record?')) return;
         await fetch('/api/fees-deposited', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
         if (selectedSession) fetchPayments(selectedSession);
+    };
+
+    const handleBulkUpload = async () => {
+        if (!bulkFile) return;
+        setBulkLoading(true);
+        setBulkResult(null);
+        try {
+            const formData = new FormData();
+            formData.append('file', bulkFile);
+            const res = await fetch('/api/upload-fees', { method: 'POST', body: formData });
+            const data = await res.json();
+            setBulkResult(data);
+            setBulkFile(null);
+            if (selectedSession) fetchPayments(selectedSession);
+        } finally {
+            setBulkLoading(false);
+        }
     };
 
     const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
@@ -97,6 +119,42 @@ export default function FeesPage() {
                     </button>
                 </form>
                 {message && <p className={`mt-3 text-sm font-semibold ${message.includes('!') ? 'text-emerald-600' : 'text-rose-600'}`}>{message}</p>}
+            </Card>
+
+            {/* Bulk Upload */}
+            <Card className="p-6">
+                <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <span className="w-2 h-6 bg-indigo-500 rounded-full"></span>Bulk Upload via Excel
+                </h2>
+                <div className="flex flex-col sm:flex-row gap-3 items-start">
+                    <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={e => setBulkFile(e.target.files?.[0] ?? null)}
+                        className="block text-sm text-slate-500 file:cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-colors"
+                    />
+                    <button
+                        onClick={handleBulkUpload}
+                        disabled={!bulkFile || bulkLoading}
+                        className="shrink-0 bg-indigo-600 text-white font-bold px-5 py-2 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm"
+                    >
+                        {bulkLoading ? 'Uploading…' : 'Upload Excel'}
+                    </button>
+                </div>
+                {bulkResult && (
+                    <div className={`mt-4 p-3 rounded-xl border text-sm ${bulkResult.error || (bulkResult.errors && bulkResult.errors.length > 0) ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                        {bulkResult.message && <p className="font-semibold text-slate-800">{bulkResult.message}</p>}
+                        {bulkResult.error && <p className="font-semibold text-rose-700">{bulkResult.error}</p>}
+                        {bulkResult.errors && bulkResult.errors.length > 0 && (
+                            <ul className="mt-2 space-y-1">
+                                {bulkResult.errors.map((e, i) => <li key={i} className="text-amber-700 text-xs font-medium">⚠ {e}</li>)}
+                            </ul>
+                        )}
+                    </div>
+                )}
+                <p className="mt-3 text-xs text-slate-400 font-medium">
+                    Required columns: <span className="font-mono font-semibold text-slate-500">RollNo, Amount, PaymentDate (YYYY-MM-DD), SessionName</span>
+                </p>
             </Card>
 
             <Card className="p-0 overflow-hidden">

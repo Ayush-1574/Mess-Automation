@@ -2,64 +2,148 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import * as XLSX from 'xlsx';
 
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+
+function daysInMonth(month: number, year: number): number {
+    return new Date(year, month, 0).getDate();
+}
+
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
-        const monthParam = searchParams.get('month');
-        const yearParam = searchParams.get('year');
         const sessionId = searchParams.get('sessionId');
+        const monthParam = searchParams.get('month'); // number 1-12 or "all"
+        const yearParam = searchParams.get('year');
 
-        if (!monthParam || !yearParam) {
-            return NextResponse.json({ error: 'month and year are required' }, { status: 400 });
+        if (!sessionId) {
+            return NextResponse.json({ error: 'sessionId is required' }, { status: 400 });
+        }
+        if (!monthParam) {
+            return NextResponse.json({ error: 'month is required' }, { status: 400 });
         }
 
-        const month = parseInt(monthParam);
-        const year = parseInt(yearParam);
+        const sessionIdNum = Number(sessionId);
+        const isAllMonths = monthParam === 'all';
+        const singleMonth = isAllMonths ? null : parseInt(monthParam);
+        const year = yearParam ? parseInt(yearParam) : new Date().getFullYear();
 
-        if (month < 1 || month > 12) {
+        if (!isAllMonths && (singleMonth! < 1 || singleMonth! > 12)) {
             return NextResponse.json({ error: 'Invalid month' }, { status: 400 });
         }
 
+        // Determine which months to include
+        let months: number[];
+        if (isAllMonths) {
+            // Find all months that have rebate data in this session
+            const distinctMonths = await prisma.monthlyRebate.findMany({
+                where: { sessionId: sessionIdNum },
+                distinct: ['month'],
+                select: { month: true },
+                orderBy: { month: 'asc' },
+            });
+            months = distinctMonths.map((r) => r.month);
+            if (months.length === 0) {
+                return NextResponse.json({ error: 'No rebate data found for this session' }, { status: 404 });
+            }
+        } else {
+            months = [singleMonth!];
+        }
+
+        // Fetch all students with their mess assignment, course, rebates and fees for this session
         const students = await prisma.student.findMany({
             include: {
                 course: true,
                 messAssignments: {
+                    where: { sessionId: sessionIdNum },
                     include: { mess: true },
-                    ...(sessionId ? { where: { sessionId: Number(sessionId) } } : {})
                 },
                 monthlyRebates: {
-                    where: { month, year }
+                    where: {
+                        sessionId: sessionIdNum,
+                        month: isAllMonths ? { in: months } : singleMonth!,
+                        ...(isAllMonths ? {} : { year }),
+                    },
+                },
+                feesDeposited: {
+                    where: { sessionId: sessionIdNum },
                 },
             },
-            orderBy: { rollNo: 'asc' }
+            orderBy: { rollNo: 'asc' },
         });
 
-        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-            'July', 'August', 'September', 'October', 'November', 'December'];
-
-        const data = students.map((student: any) => {
-            const rebate = student.monthlyRebates[0];
-            const rebateDays = rebate ? rebate.rebateDays : 0;
-
-            return {
-                RollNo: student.rollNo,
-                Name: student.name,
-                Course: student.course?.name || '-',
-                Hostel: student.hostel || '-',
-                Mess: student.messAssignments[0]?.mess?.name || '-',
-                'Rebate Days': rebateDays,
-            };
+        // Fetch all MessRates for this session at once
+        const messRates = await prisma.messRate.findMany({
+            where: { sessionId: sessionIdNum },
         });
 
-        const worksheet = XLSX.utils.json_to_sheet(data);
+        const totalFeesMap = new Map<number, number>();
+        students.forEach((s) => {
+            totalFeesMap.set(s.id, s.feesDeposited.reduce((sum, f) => sum + f.amount, 0));
+        });
+
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, `${monthNames[month - 1]} ${year}`);
+
+        for (const month of months) {
+            const monthYear = isAllMonths
+                ? (await prisma.monthlyRebate.findFirst({ where: { sessionId: sessionIdNum, month }, select: { year: true } }))?.year ?? year
+                : year;
+
+            const days = daysInMonth(month, monthYear);
+
+            const rows = students.map((student) => {
+                const assignment = student.messAssignments[0];
+                const rebate = student.monthlyRebates.find((r) => r.month === month);
+                const rebateDays = rebate?.rebateDays ?? 0;
+                const chargeableDays = days - rebateDays;
+
+                // Find the rate for this student's mess, course, session, month
+                const rate = messRates.find(
+                    (mr) =>
+                        mr.messId === assignment?.messId &&
+                        mr.courseId === student.courseId &&
+                        mr.sessionId === sessionIdNum &&
+                        mr.month === month
+                );
+
+                const dailyRate = rate?.monthlyRate ?? 0; // field is named monthlyRate but is actually daily rate
+                const gst = rate?.gstPercentage ?? 0;
+                const amount = chargeableDays * dailyRate * (1 + gst / 100);
+                const totalFees = totalFeesMap.get(student.id) ?? 0;
+
+                return {
+                    'Roll No': student.rollNo,
+                    'Name': student.name,
+                    'Course': student.course?.name ?? '-',
+                    'Hostel': student.hostel ?? '-',
+                    'Mess': assignment?.mess?.name ?? '-',
+                    'Month': MONTH_NAMES[month - 1],
+                    'Year': monthYear,
+                    'Days in Month': days,
+                    'Rebate Days': rebateDays,
+                    'Chargeable Days': chargeableDays,
+                    'Daily Rate (₹)': dailyRate,
+                    'GST (%)': gst,
+                    'Amount (₹)': parseFloat(amount.toFixed(2)),
+                    'Total Fees Deposited (₹)': parseFloat(totalFees.toFixed(2)),
+                    'Balance (₹)': parseFloat((totalFees - amount).toFixed(2)),
+                };
+            });
+
+            const sheetName = isAllMonths
+                ? `${MONTH_NAMES[month - 1].substring(0, 3)} ${monthYear}`.substring(0, 31)
+                : `${MONTH_NAMES[month - 1]} ${monthYear}`.substring(0, 31);
+
+            XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), sheetName);
+        }
+
         const buf = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+        const label = isAllMonths ? 'all_months' : `${MONTH_NAMES[singleMonth! - 1]}_${year}`;
 
         return new Response(buf, {
             status: 200,
             headers: {
-                'Content-Disposition': `attachment; filename="monthly_report_${monthNames[month - 1]}_${year}.xlsx"`,
+                'Content-Disposition': `attachment; filename="monthly_report_${label}.xlsx"`,
                 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             },
         });

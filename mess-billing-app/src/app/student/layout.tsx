@@ -1,24 +1,26 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { BrandLogo } from '../../components/ui/BrandLogo';
 
-export default function StudentLayout({
+function NavigationInner({
     children,
+    pathname,
+    isCollapsed,
+    toggleSidebar
 }: {
     children: React.ReactNode;
+    pathname: string;
+    isCollapsed: boolean;
+    toggleSidebar: () => void;
 }) {
-    const pathname = usePathname();
     const searchParams = useSearchParams();
     const id = searchParams.get('id'); // Persist ID in links
-    const [isCollapsed, setIsCollapsed] = useState(false);
-
-    const toggleSidebar = () => setIsCollapsed(!isCollapsed);
     const getLink = (path: string) => id ? `${path}?id=${id}` : path;
 
     return (
-        <div className="flex h-screen bg-transparent font-sans selection:bg-indigo-100 selection:text-indigo-900 overflow-hidden">
+        <>
             {/* Sidebar */}
             <aside className={`bg-white/20 backdrop-blur-2xl border-r border-white/40 flex flex-col z-20 transition-all duration-300 shadow-[4px_0_24px_rgb(0,0,0,0.02)] relative ${isCollapsed ? 'w-20' : 'w-72'}`}>
                 <div className="p-4 border-b border-white/30 bg-transparent flex items-center justify-between min-h-[5rem] gap-2">
@@ -79,6 +81,26 @@ export default function StudentLayout({
                     {children}
                 </div>
             </main>
+        </>
+    );
+}
+
+export default function StudentLayout({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
+    const pathname = usePathname();
+    const [isCollapsed, setIsCollapsed] = useState(false);
+    const toggleSidebar = () => setIsCollapsed(!isCollapsed);
+
+    return (
+        <div className="flex h-screen bg-transparent font-sans selection:bg-indigo-100 selection:text-indigo-900 overflow-hidden">
+            <Suspense fallback={<div className="flex-1 bg-transparent h-screen"></div>}>
+                <NavigationInner pathname={pathname} isCollapsed={isCollapsed} toggleSidebar={toggleSidebar}>
+                    {children}
+                </NavigationInner>
+            </Suspense>
         </div>
     );
 }

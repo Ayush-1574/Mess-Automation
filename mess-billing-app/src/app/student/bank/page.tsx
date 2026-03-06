@@ -1,9 +1,9 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { Card } from '../../../components/ui/Card';
 
-export default function StudentBankPage() {
+function BankContent() {
     const searchParams = useSearchParams();
     const id = searchParams.get('id');
 
@@ -172,5 +172,13 @@ export default function StudentBankPage() {
                 )}
             </Card>
         </div>
+    );
+}
+
+export default function StudentBankPage() {
+    return (
+        <Suspense fallback={<div>Loading bank details...</div>}>
+            <BankContent />
+        </Suspense>
     );
 }

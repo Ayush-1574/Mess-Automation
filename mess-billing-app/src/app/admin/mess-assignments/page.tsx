@@ -2,8 +2,69 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'];
+function UploadCard({
+    title,
+    accent,
+    onUpload,
+}: {
+    title: string;
+    accent: string;
+    onUpload: (file: File) => Promise<{ message?: string; errors?: string[]; error?: string }>;
+}) {
+    const [file, setFile] = useState<File | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [result, setResult] = useState<{ message?: string; errors?: string[]; error?: string } | null>(null);
+
+    const handleUpload = async () => {
+        if (!file) return;
+        setLoading(true);
+        setResult(null);
+        try {
+            const res = await onUpload(file);
+            setResult(res);
+            setFile(null);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Card className="p-6">
+            <h2 className={`text-lg font-bold text-slate-800 mb-4 flex items-center gap-2`}>
+                <span className={`w-2 h-6 ${accent} rounded-full`}></span>{title}
+            </h2>
+            <div className="flex flex-col sm:flex-row gap-3 items-start">
+                <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={e => setFile(e.target.files?.[0] ?? null)}
+                    className="block text-sm text-slate-500 file:cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-colors"
+                />
+                <button
+                    onClick={handleUpload}
+                    disabled={!file || loading}
+                    className="shrink-0 bg-indigo-600 text-white font-bold px-5 py-2 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm"
+                >
+                    {loading ? 'Uploading…' : 'Upload Excel'}
+                </button>
+            </div>
+            {result && (
+                <div className={`mt-4 p-3 rounded-xl border text-sm ${result.error || (result.errors && result.errors.length > 0) ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                    {result.message && <p className="font-semibold text-slate-800">{result.message}</p>}
+                    {result.error && <p className="font-semibold text-rose-700">{result.error}</p>}
+                    {result.errors && result.errors.length > 0 && (
+                        <ul className="mt-2 space-y-1">
+                            {result.errors.map((e, i) => <li key={i} className="text-amber-700 text-xs font-medium">⚠ {e}</li>)}
+                        </ul>
+                    )}
+                </div>
+            )}
+            <p className="mt-3 text-xs text-slate-400 font-medium">
+                Required columns: <span className="font-mono font-semibold text-slate-500">RollNo, MessName, SessionName</span>
+            </p>
+        </Card>
+    );
+}
 
 export default function MessAssignmentsPage() {
     const [sessions, setSessions] = useState<any[]>([]);
@@ -56,6 +117,15 @@ export default function MessAssignmentsPage() {
         if (selectedSession) fetchAssignments(selectedSession);
     };
 
+    const handleBulkUpload = async (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/api/upload-mess-assignments', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (selectedSession) fetchAssignments(selectedSession);
+        return data;
+    };
+
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
             <div>
@@ -99,6 +169,12 @@ export default function MessAssignmentsPage() {
                 </form>
                 {message && <p className={`mt-3 text-sm font-semibold ${message.includes('!') ? 'text-emerald-600' : 'text-rose-600'}`}>{message}</p>}
             </Card>
+
+            <UploadCard
+                title="Bulk Upload via Excel"
+                accent="bg-indigo-500"
+                onUpload={handleBulkUpload}
+            />
 
             <Card className="p-0 overflow-hidden">
                 <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">

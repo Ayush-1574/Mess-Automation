@@ -92,17 +92,19 @@ model MonthlyRebate {
 }
 
 model MessRate {
-  id          Int     @id @default(autoincrement())
-  messId      Int
-  courseId    Int
-  sessionId   Int
-  monthlyRate Float
+  id             Int     @id @default(autoincrement())
+  messId         Int
+  courseId       Int
+  sessionId      Int
+  month          Int     // 1 to 12
+  monthlyRate    Float
+  gstPercentage  Float   @default(0)
 
   mess        Mess    @relation(fields: [messId], references: [id])
   course      Course  @relation(fields: [courseId], references: [id])
   session     Session @relation(fields: [sessionId], references: [id])
 
-  @@unique([messId, courseId, sessionId])
+  @@unique([messId, courseId, sessionId, month])
 }
 
 model FeesDeposited {

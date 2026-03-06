@@ -2,13 +2,18 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
 
+const MONTH_NAMES = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+];
+
 export default function MessRatesPage() {
     const [sessions, setSessions] = useState<any[]>([]);
     const [messes, setMesses] = useState<any[]>([]);
     const [courses, setCourses] = useState<any[]>([]);
     const [rates, setRates] = useState<any[]>([]);
     const [selectedSession, setSelectedSession] = useState('');
-    const [form, setForm] = useState({ messId: '', courseId: '', sessionId: '', monthlyRate: '' });
+    const [form, setForm] = useState({ messId: '', courseId: '', sessionId: '', month: '', monthlyRate: '', gstPercentage: '0' });
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [fetching, setFetching] = useState(false);
@@ -36,7 +41,12 @@ export default function MessRatesPage() {
             const res = await fetch('/api/mess-rates', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...form, monthlyRate: Number(form.monthlyRate) }),
+                body: JSON.stringify({
+                    ...form,
+                    month: Number(form.month),
+                    monthlyRate: Number(form.monthlyRate),
+                    gstPercentage: Number(form.gstPercentage)
+                }),
             });
             const data = await res.json();
             if (res.ok) {
@@ -57,7 +67,7 @@ export default function MessRatesPage() {
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
             <div>
                 <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Mess Rates</h1>
-                <p className="text-slate-500 mt-2 font-medium">Set monthly mess rates per mess, course and session.</p>
+                <p className="text-slate-500 mt-2 font-medium">Set monthly mess rates per mess, course, session and month.</p>
             </div>
 
             <Card className="p-6">
@@ -72,6 +82,16 @@ export default function MessRatesPage() {
                                 className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50">
                                 <option value="">Select session</option>
                                 {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Month</label>
+                            <select value={form.month} onChange={e => setForm(p => ({ ...p, month: e.target.value }))} required
+                                className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+                                <option value="">Select month</option>
+                                {MONTH_NAMES.map((name, i) => (
+                                    <option key={i + 1} value={i + 1}>{name}</option>
+                                ))}
                             </select>
                         </div>
                         <div>
@@ -94,6 +114,12 @@ export default function MessRatesPage() {
                             <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Monthly Rate (₹)</label>
                             <input type="number" value={form.monthlyRate} onChange={e => setForm(p => ({ ...p, monthlyRate: e.target.value }))} required min="0" step="0.01"
                                 placeholder="e.g. 4500"
+                                className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">GST (%)</label>
+                            <input type="number" value={form.gstPercentage} onChange={e => setForm(p => ({ ...p, gstPercentage: e.target.value }))} min="0" max="100" step="0.01"
+                                placeholder="e.g. 5"
                                 className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
                         </div>
                     </div>
@@ -127,7 +153,9 @@ export default function MessRatesPage() {
                                 <th className="p-4 text-left">Mess</th>
                                 <th className="p-4 text-left">Course</th>
                                 <th className="p-4 text-left">Session</th>
+                                <th className="p-4 text-left">Month</th>
                                 <th className="p-4 text-right">Monthly Rate</th>
+                                <th className="p-4 text-right">GST %</th>
                                 <th className="p-4 text-right pr-6">Action</th>
                             </tr>
                         </thead>
@@ -141,7 +169,13 @@ export default function MessRatesPage() {
                                     <td className="p-4">
                                         <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-violet-50 text-violet-700 border border-violet-100">{r.session.name}</span>
                                     </td>
+                                    <td className="p-4">
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-sky-50 text-sky-700 border border-sky-100">{MONTH_NAMES[r.month - 1]}</span>
+                                    </td>
                                     <td className="p-4 text-right font-bold text-slate-800">₹{r.monthlyRate.toLocaleString()}</td>
+                                    <td className="p-4 text-right">
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">{r.gstPercentage ?? 0}%</span>
+                                    </td>
                                     <td className="p-4 text-right pr-6">
                                         <button onClick={() => handleDelete(r.id)}
                                             className="text-rose-600 text-xs font-bold px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 transition-colors">Delete</button>

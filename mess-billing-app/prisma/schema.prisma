@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,22 +8,22 @@ datasource db {
 }
 
 model Student {
-  id            Int      @id @default(autoincrement())
-  rollNo        String   @unique
-  name          String
-  batch         String?
-  mess          String?
-  hostel        String?
-  email         String?  @unique
-  bankAccountNo String?
-  bankName      String?
-  ifsc          String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  rollNo         String   @unique
+  name           String
+  batch          String?
+  mess           String?
+  hostel         String?
+  email          String?  @unique
+  bankAccountNo  String?
+  bankName       String?
+  ifsc           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
   isBankEditable Boolean  @default(true)
   openingBalance Float    @default(0)
-  bills         Bill[]
-  rebates       Rebate[]
+  bills          Bill[]
+  rebates        Rebate[]
 }
 
 model Bill {
@@ -49,7 +46,7 @@ model Rebate {
   startDate DateTime
   endDate   DateTime
   reason    String?
-  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  status    String   @default("PENDING")
   studentId Int
   student   Student  @relation(fields: [studentId], references: [id])
 }

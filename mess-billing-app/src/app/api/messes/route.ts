@@ -1,8 +1,22 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
+        const { searchParams } = new URL(request.url);
+        const hostelId = searchParams.get('hostelId');
+
+        if (hostelId) {
+            // Return messes whose students have the given hostelId assigned
+            const assignments = await prisma.studentMessAssignment.findMany({
+                where: { student: { hostelId: Number(hostelId) } },
+                include: { mess: true },
+                distinct: ['messId'],
+            });
+            const filtered = assignments.map(a => a.mess).sort((a, b) => a.name.localeCompare(b.name));
+            return NextResponse.json(filtered.length > 0 ? filtered : await prisma.mess.findMany({ orderBy: { name: 'asc' } }));
+        }
+
         const messes = await prisma.mess.findMany({ orderBy: { name: 'asc' } });
         return NextResponse.json(messes);
     } catch (error) {

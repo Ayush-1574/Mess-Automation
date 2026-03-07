@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card } from '../../../components/ui/Card';
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -8,6 +8,7 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
 export default function MonthlyRebatesPage() {
     const [sessions, setSessions] = useState<any[]>([]);
     const [messes, setMesses] = useState<any[]>([]);
+    const [hostels, setHostels] = useState<any[]>([]);
     const [rebates, setRebates] = useState<any[]>([]);
     const [selectedSession, setSelectedSession] = useState('');
     const [form, setForm] = useState({
@@ -23,7 +24,9 @@ export default function MonthlyRebatesPage() {
     // Bulk upload state
     const [showBulkPanel, setShowBulkPanel] = useState(false);
     const [bulkForm, setBulkForm] = useState({
-        sessionId: '', messId: '', hostel: '',
+        sessionId: '',
+        messId: '',      // '' = not selected, 'any' = Any Mess
+        hostelId: '',    // '' = not selected, 'any' = Any Hostel
         month: String(new Date().getMonth() + 1),
         year: String(new Date().getFullYear()),
     });
@@ -31,9 +34,37 @@ export default function MonthlyRebatesPage() {
     const [bulkLoading, setBulkLoading] = useState(false);
     const [bulkResult, setBulkResult] = useState<{ message?: string; errors?: string[]; error?: string } | null>(null);
 
+    // Fetch base data
     useEffect(() => {
         fetch('/api/sessions').then(r => r.json()).then(d => setSessions(Array.isArray(d) ? d : []));
         fetch('/api/messes').then(r => r.json()).then(d => setMesses(Array.isArray(d) ? d : []));
+        fetch('/api/hostels').then(r => r.json()).then(d => setHostels(Array.isArray(d) ? d : []));
+    }, []);
+
+    // When hostel changes → reload messes filtered by hostel (or all), keep mess selection
+    const onHostelChange = useCallback(async (hostelId: string) => {
+        setBulkForm(p => ({ ...p, hostelId }));
+        if (hostelId && hostelId !== 'any') {
+            const res = await fetch(`/api/messes?hostelId=${hostelId}`);
+            const data = await res.json();
+            setMesses(Array.isArray(data) && data.length > 0 ? data : await fetch('/api/messes').then(r => r.json()));
+        } else {
+            const res = await fetch('/api/messes');
+            setMesses(await res.json());
+        }
+    }, []);
+
+    // When mess changes → reload hostels filtered by mess (or all), keep hostel selection
+    const onMessChange = useCallback(async (messId: string) => {
+        setBulkForm(p => ({ ...p, messId }));
+        if (messId && messId !== 'any') {
+            const res = await fetch(`/api/hostels?messId=${messId}`);
+            const data = await res.json();
+            setHostels(Array.isArray(data) && data.length > 0 ? data : await fetch('/api/hostels').then(r => r.json()));
+        } else {
+            const res = await fetch('/api/hostels');
+            setHostels(await res.json());
+        }
     }, []);
 
     const fetchRebates = async (sessionId: string) => {
@@ -71,9 +102,17 @@ export default function MonthlyRebatesPage() {
         if (selectedSession) fetchRebates(selectedSession);
     };
 
+    // Validation: both cannot be "any"
+    const bothAny = bulkForm.messId === 'any' && bulkForm.hostelId === 'any';
+
+    // Compute expected extra Excel columns hint
+    const extraCols: string[] = [];
+    if (bulkForm.messId === 'any') extraCols.push('Mess');
+    if (bulkForm.hostelId === 'any') extraCols.push('Hostel');
+
     const handleBulkUpload = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!bulkFile) return;
+        if (!bulkFile || bothAny) return;
         setBulkLoading(true);
         setBulkResult(null);
         try {
@@ -82,8 +121,8 @@ export default function MonthlyRebatesPage() {
             formData.append('sessionId', bulkForm.sessionId);
             formData.append('month', bulkForm.month);
             formData.append('year', bulkForm.year);
-            formData.append('hostel', bulkForm.hostel);
-            formData.append('messId', bulkForm.messId);
+            formData.append('messId', bulkForm.messId || 'any');
+            formData.append('hostelId', bulkForm.hostelId || 'any');
             const res = await fetch('/api/upload-monthly-rebates', { method: 'POST', body: formData });
             const data = await res.json();
             setBulkResult(data);
@@ -117,8 +156,16 @@ export default function MonthlyRebatesPage() {
                         <span className="w-2 h-6 bg-indigo-500 rounded-full"></span>Bulk Rebate Upload
                         <span className="ml-auto text-xs font-medium text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">Select context below, then upload Excel</span>
                     </h2>
+
+                    {bothAny && (
+                        <div className="mb-4 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold">
+                            ⚠ You cannot select "Any Mess" and "Any Hostel" at the same time. Please choose at least one.
+                        </div>
+                    )}
+
                     <form onSubmit={handleBulkUpload} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Session */}
                             <div>
                                 <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Session</label>
                                 <select value={bulkForm.sessionId} onChange={e => setBulkForm(p => ({ ...p, sessionId: e.target.value }))} required
@@ -127,23 +174,40 @@ export default function MonthlyRebatesPage() {
                                     {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
                             </div>
+
+                            {/* Mess dropdown with "Any Mess" */}
                             <div>
-                                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Mess</label>
-                                <select value={bulkForm.messId} onChange={e => setBulkForm(p => ({ ...p, messId: e.target.value }))} required
-                                    className="w-full border border-slate-200 bg-white px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
+                                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">
+                                    Mess
+                                    {bulkForm.messId === 'any' && (
+                                        <span className="ml-2 normal-case text-indigo-500 font-normal">(Excel needs <code className="bg-indigo-50 px-1 rounded">Mess</code> column)</span>
+                                    )}
+                                </label>
+                                <select value={bulkForm.messId} onChange={e => onMessChange(e.target.value)} required
+                                    className={`w-full border px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${bulkForm.messId === 'any' ? 'border-indigo-300 bg-indigo-50' : 'border-slate-200 bg-white'}`}>
                                     <option value="">Select mess</option>
+                                    <option value="any">— Any Mess (from Excel) —</option>
                                     {messes.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                                 </select>
                             </div>
+
+                            {/* Hostel dropdown with "Any Hostel" */}
                             <div>
-                                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Hostel</label>
-                                <input
-                                    value={bulkForm.hostel}
-                                    onChange={e => setBulkForm(p => ({ ...p, hostel: e.target.value }))}
-                                    placeholder="e.g. Chenab"
-                                    className="w-full border border-slate-200 bg-white px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                                />
+                                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">
+                                    Hostel
+                                    {bulkForm.hostelId === 'any' && (
+                                        <span className="ml-2 normal-case text-indigo-500 font-normal">(Excel needs <code className="bg-indigo-50 px-1 rounded">Hostel</code> column)</span>
+                                    )}
+                                </label>
+                                <select value={bulkForm.hostelId} onChange={e => onHostelChange(e.target.value)} required
+                                    className={`w-full border px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${bulkForm.hostelId === 'any' ? 'border-indigo-300 bg-indigo-50' : 'border-slate-200 bg-white'}`}>
+                                    <option value="">Select hostel</option>
+                                    <option value="any">— Any Hostel (from Excel) —</option>
+                                    {hostels.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                                </select>
                             </div>
+
+                            {/* Month */}
                             <div>
                                 <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Month</label>
                                 <select value={bulkForm.month} onChange={e => setBulkForm(p => ({ ...p, month: e.target.value }))} required
@@ -151,32 +215,43 @@ export default function MonthlyRebatesPage() {
                                     {MONTH_NAMES.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
                                 </select>
                             </div>
+
+                            {/* Year */}
                             <div>
                                 <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Year</label>
                                 <input type="number" value={bulkForm.year} onChange={e => setBulkForm(p => ({ ...p, year: e.target.value }))} required min="2000" max="2100"
                                     className="w-full border border-slate-200 bg-white px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
                             </div>
+
+                            {/* File */}
                             <div>
                                 <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Excel File</label>
                                 <input
-                                    type="file"
-                                    accept=".xlsx,.xls"
+                                    type="file" accept=".xlsx,.xls"
                                     onChange={e => setBulkFile(e.target.files?.[0] ?? null)}
                                     required
                                     className="block w-full text-sm text-slate-500 file:cursor-pointer file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-colors"
                                 />
                             </div>
                         </div>
+
+                        {/* Dynamic column hint */}
+                        <p className="text-xs text-slate-500 font-medium">
+                            Required Excel columns:{' '}
+                            <span className="font-mono font-semibold text-slate-700">
+                                RollNo, StudentName, RebateDays, MessRate, GSTPercentage
+                                {extraCols.length > 0 ? `, ${extraCols.join(', ')}` : ''}
+                            </span>
+                        </p>
+
                         <div className="flex items-center gap-4">
-                            <button type="submit" disabled={!bulkFile || bulkLoading}
+                            <button type="submit" disabled={!bulkFile || bulkLoading || bothAny || !bulkForm.sessionId || !bulkForm.messId || !bulkForm.hostelId}
                                 className="bg-indigo-600 text-white font-bold px-6 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm">
                                 {bulkLoading ? 'Processing…' : 'Upload & Process'}
                             </button>
-                            <p className="text-xs text-slate-500 font-medium">
-                                Excel columns: <span className="font-mono font-semibold text-slate-600">RollNo, StudentName, RebateDays, MessRate, GSTPercentage</span>
-                            </p>
                         </div>
                     </form>
+
                     {bulkResult && (
                         <div className={`mt-4 p-3 rounded-xl border text-sm ${bulkResult.error || (bulkResult.errors && bulkResult.errors.length > 0) ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
                             {bulkResult.message && <p className="font-semibold text-slate-800">{bulkResult.message}</p>}
@@ -191,6 +266,7 @@ export default function MonthlyRebatesPage() {
                 </Card>
             )}
 
+            {/* Individual Add/Update Rebate */}
             <Card className="p-6">
                 <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
                     <span className="w-2 h-6 bg-orange-500 rounded-full"></span>Add / Update Rebate
@@ -239,6 +315,7 @@ export default function MonthlyRebatesPage() {
                 {message && <p className={`mt-3 text-sm font-semibold ${message.includes('!') ? 'text-emerald-600' : 'text-rose-600'}`}>{message}</p>}
             </Card>
 
+            {/* View Rebates Table */}
             <Card className="p-0 overflow-hidden">
                 <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                     <h2 className="text-lg font-bold text-slate-800">View Rebates by Session</h2>
@@ -260,6 +337,7 @@ export default function MonthlyRebatesPage() {
                             <tr className="bg-slate-50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500 font-semibold">
                                 <th className="p-4 text-left">Roll No</th>
                                 <th className="p-4 text-left">Student</th>
+                                <th className="p-4 text-left">Hostel</th>
                                 <th className="p-4 text-center">Month</th>
                                 <th className="p-4 text-center">Year</th>
                                 <th className="p-4 text-center">Rebate Days</th>
@@ -271,6 +349,7 @@ export default function MonthlyRebatesPage() {
                                 <tr key={r.id} className="hover:bg-slate-50/50 transition-colors">
                                     <td className="p-4 font-bold text-slate-800">{r.student.rollNo}</td>
                                     <td className="p-4 text-slate-700 font-medium">{r.student.name}</td>
+                                    <td className="p-4 text-slate-500 text-xs">{r.student.hostelRef?.name ?? r.student.hostel ?? '—'}</td>
                                     <td className="p-4 text-center text-slate-600">{MONTH_NAMES[r.month - 1]}</td>
                                     <td className="p-4 text-center text-slate-600">{r.year}</td>
                                     <td className="p-4 text-center">

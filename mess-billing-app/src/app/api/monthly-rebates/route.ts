@@ -14,7 +14,7 @@ export async function GET(request: Request) {
         const rebates = await prisma.monthlyRebate.findMany({
             where,
             include: {
-                student: { select: { id: true, rollNo: true, name: true } },
+                student: { select: { id: true, rollNo: true, name: true, hostel: true, hostelId: true, hostelRef: { select: { id: true, name: true } } } },
                 session: true,
             },
             orderBy: [{ year: 'desc' }, { month: 'desc' }]

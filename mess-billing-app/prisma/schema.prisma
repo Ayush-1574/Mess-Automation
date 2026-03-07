@@ -7,6 +7,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Hostel {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+
+  students  Student[]
+}
+
 model Course {
   id          Int       @id @default(autoincrement())
   name        String    @unique  // e.g. BTech, MTech, PhD
@@ -34,7 +42,7 @@ model Student {
   rollNo         String   @unique
   name           String
   batch          String?
-  hostel         String?
+  hostel         String?  // denormalized name, kept for legacy
   email          String?  @unique
   address        String?
   messSecurity   Float    @default(0)
@@ -47,6 +55,9 @@ model Student {
 
   courseId       Int?
   course         Course?  @relation(fields: [courseId], references: [id])
+
+  hostelId       Int?
+  hostelRef      Hostel?  @relation(fields: [hostelId], references: [id])
 
   messAssignments  StudentMessAssignment[]
   monthlyRebates   MonthlyRebate[]

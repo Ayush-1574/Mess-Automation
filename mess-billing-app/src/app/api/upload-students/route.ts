@@ -22,38 +22,69 @@ export async function POST(request: Request) {
         const allCourses = await prisma.course.findMany();
         const courseMap = new Map(allCourses.map(c => [c.name.toLowerCase(), c.id]));
 
-        const studentsToCreate = [];
+        let processed = 0;
+        const errors: string[] = [];
 
         for (const row of jsonData as any[]) {
-            if (row.RollNo && row.Name) {
-                // Course lookup: match by name
-                let courseId: number | undefined;
-                if (row.Course) {
-                    courseId = courseMap.get(String(row.Course).toLowerCase());
-                }
+            if (!row.RollNo || !row.Name) continue;
 
-                studentsToCreate.push({
-                    rollNo: String(row.RollNo),
-                    name: row.Name,
-                    batch: row.Batch ? String(row.Batch) : undefined,
-                    hostel: row.Hostel,
-                    email: row.Email,
-                    address: row.Address,
-                    messSecurity: row.MessSecurity ? Number(row.MessSecurity) : 0,
-                    bankAccountNo: row.BankAccountNo ? String(row.BankAccountNo) : null,
-                    bankName: row.BankName,
-                    ifsc: row.IFSC,
-                    courseId: courseId ?? null,
+            // Upsert Hostel record and get its ID
+            let hostelId: number | null = null;
+            const hostelName = row.Hostel ? String(row.Hostel).trim() : null;
+            if (hostelName) {
+                const hostel = await prisma.hostel.upsert({
+                    where: { name: hostelName },
+                    update: {},
+                    create: { name: hostelName },
                 });
+                hostelId = hostel.id;
+            }
+
+            const courseId = row.Course
+                ? (courseMap.get(String(row.Course).toLowerCase()) ?? null)
+                : null;
+
+            try {
+                await prisma.student.upsert({
+                    where: { rollNo: String(row.RollNo) },
+                    update: {
+                        name: row.Name,
+                        batch: row.Batch ? String(row.Batch) : undefined,
+                        hostel: hostelName ?? undefined,
+                        hostelId: hostelId ?? undefined,
+                        email: row.Email ?? undefined,
+                        address: row.Address ?? undefined,
+                        messSecurity: row.MessSecurity ? Number(row.MessSecurity) : undefined,
+                        bankAccountNo: row.BankAccountNo ? String(row.BankAccountNo) : undefined,
+                        bankName: row.BankName ?? undefined,
+                        ifsc: row.IFSC ?? undefined,
+                        courseId: courseId ?? undefined,
+                    },
+                    create: {
+                        rollNo: String(row.RollNo),
+                        name: row.Name,
+                        batch: row.Batch ? String(row.Batch) : undefined,
+                        hostel: hostelName ?? undefined,
+                        hostelId: hostelId ?? undefined,
+                        email: row.Email ?? undefined,
+                        address: row.Address ?? undefined,
+                        messSecurity: row.MessSecurity ? Number(row.MessSecurity) : 0,
+                        bankAccountNo: row.BankAccountNo ? String(row.BankAccountNo) : null,
+                        bankName: row.BankName ?? undefined,
+                        ifsc: row.IFSC ?? undefined,
+                        courseId: courseId ?? null,
+                    },
+                });
+                processed++;
+            } catch (err) {
+                errors.push(`${row.RollNo}: ${(err as any).message}`);
             }
         }
 
-        await prisma.student.createMany({
-            data: studentsToCreate,
-            skipDuplicates: true,
-        });
-
-        return NextResponse.json({ message: `Processed ${studentsToCreate.length} students` }, { status: 200 });
+        return NextResponse.json({
+            message: `Processed ${processed} students`,
+            errors,
+        }, { status: 200 });
     } catch (error) {
         console.error('Upload error:', error);
         return NextResponse.json({ error: 'Failed to process file' }, { status: 500 });

@@ -20,51 +20,95 @@ export default function Home() {
     }
   };
 
+  const apps = [
+    {
+      name: 'Mess Billing & Rebate',
+      description: 'Manage mess bills, rebates, fees, and student records.',
+      path: '/mess',
+      color: 'indigo',
+      iconBg: 'bg-indigo-50',
+      iconColor: 'text-indigo-600',
+      borderHover: 'hover:border-indigo-300',
+      shadowHover: 'hover:shadow-indigo-100/50',
+      icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zm-7-8V7m0 6v.01',
+      status: 'Active',
+      statusColor: 'bg-indigo-100 text-indigo-700',
+    },
+    {
+      name: 'No Objection Certificate',
+      description: 'Apply for and track NOC requests for various purposes.',
+      path: '/noc',
+      color: 'emerald',
+      iconBg: 'bg-emerald-50',
+      iconColor: 'text-emerald-600',
+      borderHover: 'hover:border-emerald-300',
+      shadowHover: 'hover:shadow-emerald-100/50',
+      icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+      status: 'Active',
+      statusColor: 'bg-emerald-100 text-emerald-700',
+    },
+  ];
+
   return (
     <div className="min-h-screen flex items-center justify-center relative">
 
-      <div className="bg-white/20 backdrop-blur-2xl p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/50 w-full max-w-md relative z-10 transition-all duration-500 hover:shadow-[0_20px_50px_rgb(0,0,0,0.12)] hover:bg-white/30 hover:-translate-y-2">
-        <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/30">
-          <div className="text-left">
-            <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Mess Portal</h1>
-            <p className="text-sm text-slate-500 mt-2 font-medium">Sign in to manage your account</p>
+      <div className="w-full max-w-4xl relative z-10 px-4">
+        {/* Header */}
+        <div className="text-center mb-10">
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <BrandLogo />
+            <div className="text-left">
+              <h1 className="text-4xl font-extrabold text-slate-800 tracking-tight">IIT Ropar</h1>
+              <p className="text-sm text-slate-500 font-semibold uppercase tracking-widest mt-0.5">Student Services Portal</p>
+            </div>
           </div>
-          <BrandLogo />
+          <p className="text-slate-500 font-medium mt-3 max-w-md mx-auto">
+            Access all university services and forms from one place.
+          </p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div>
-            <Select
-              label="Select Role"
-              value={role}
-              onChange={(val: string | number) => setRole(val as string)}
-              options={[
-                { label: 'Student', value: 'student' },
-                { label: 'Admin', value: 'admin' }
-              ]}
-              className="bg-white/80"
-            />
-          </div>
+        {/* App Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+          {apps.map((app) => (
+            <button
+              key={app.path}
+              onClick={() => {
+                if (app.status === 'Active') {
+                  router.push(app.path);
+                }
+              }}
+              disabled={app.status !== 'Active'}
+              className={`group text-left bg-white/20 backdrop-blur-2xl p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/50 relative transition-all duration-500 ${
+                app.status === 'Active'
+                  ? `hover:shadow-[0_20px_50px_rgb(0,0,0,0.12)] hover:bg-white/30 hover:-translate-y-2 cursor-pointer ${app.borderHover}`
+                  : 'opacity-70 cursor-not-allowed'
+              }`}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className={`w-14 h-14 rounded-2xl ${app.iconBg} flex items-center justify-center shadow-inner border border-white/60 group-hover:scale-110 transition-transform duration-300`}>
+                  <svg className={`w-7 h-7 ${app.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={app.icon}></path>
+                  </svg>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${app.statusColor}`}>
+                  {app.status}
+                </span>
+              </div>
 
-          <div className={`transition-all duration-500 overflow-hidden ${role === 'student' ? 'max-h-24 opacity-100 scale-100' : 'max-h-0 opacity-0 scale-95'}`}>
-            <label className="block text-sm font-bold text-slate-700 mb-1.5">Roll Number</label>
-            <input
-              type="text"
-              value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
-              className="w-full border border-white/60 bg-white/60 backdrop-blur-md px-4 py-3 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 hover:border-indigo-300 focus:bg-white shadow-[0_4px_10px_rgb(0,0,0,0.03)] hover:bg-white/90 hover:shadow-md transition-all duration-300 placeholder:text-slate-400"
-              placeholder="e.g. 2023CSB1107"
-              required={role === 'student'}
-            />
-          </div>
+              <h3 className="text-xl font-bold text-slate-800 mb-2 group-hover:text-indigo-700 transition-colors">{app.name}</h3>
+              <p className="text-sm text-slate-500 font-medium leading-relaxed">{app.description}</p>
 
-          <button
-            type="submit"
-            className="w-full mt-2 bg-indigo-600 text-white font-semibold py-3.5 rounded-xl hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transform transition-all active:scale-[0.98] shadow-md shadow-indigo-200"
-          >
-            Sign In
-          </button>
-        </form>
+              {app.status === 'Active' && (
+                <div className="mt-5 flex items-center gap-2 text-sm font-semibold text-indigo-600 opacity-0 group-hover:opacity-100 translate-x-0 group-hover:translate-x-1 transition-all duration-300">
+                  <span>Open</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                  </svg>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

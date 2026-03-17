@@ -5,8 +5,17 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Mess Bill Management',
-  description: 'Manage student mess bills and rebates',
+  title: 'IIT Ropar Student Services',
+  description: 'IT forms and services',
+  icons: {
+    icon: [
+      { url: '/api/icon', type: 'image/svg+xml' }
+    ],
+    shortcut: ['/api/icon'],
+    apple: [
+      { url: '/api/icon' }
+    ],
+  },
 };
 
 export default function RootLayout({

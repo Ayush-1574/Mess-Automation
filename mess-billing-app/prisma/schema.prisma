@@ -44,6 +44,7 @@ model Student {
   batch          String?
   hostel         String?  // denormalized name, kept for legacy
   email          String?  @unique
+  password       String?  // For optional password-based login
   address        String?
   messSecurity   Float    @default(0)
   bankAccountNo  String?
@@ -62,6 +63,14 @@ model Student {
   messAssignments  StudentMessAssignment[]
   monthlyRebates   MonthlyRebate[]
   feesDeposited    FeesDeposited[]
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
 }
 
 model Mess {
@@ -128,4 +137,12 @@ model FeesDeposited {
 
   student     Student  @relation(fields: [studentId], references: [id])
   session     Session  @relation(fields: [sessionId], references: [id])
+}
+
+model Otp {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  otp       String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }

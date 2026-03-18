@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "MessRate" ADD COLUMN     "gstPercentage" DOUBLE PRECISION NOT NULL DEFAULT 0;

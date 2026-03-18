@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../src/generated/noc-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("NOC_DATABASE_URL")
+}
+
+// ─── Enums ──────────────────────────────────────────────────
+
+enum OfficerRole {
+  ADMIN_OFFICER
+  JOINT_SUPERINTENDENT
+  ASSISTANT_REGISTRAR
+}
+
+enum CertificateType {
+  BONAFIDE
+  CHARACTER
+  FEE_STRUCTURE
+  OTHER
+}
+
+enum ApplicationStatus {
+  PENDING_ADMIN
+  PENDING_JOINT_SUPT
+  PENDING_ASST_REGISTRAR
+  APPROVED
+  REJECTED
+}
+
+enum ActionType {
+  VERIFIED
+  REJECTED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+// ─── Models ─────────────────────────────────────────────────
+
+model NocStudent {
+  id          Int      @id @default(autoincrement())
+  rollNo      String   @unique
+  name        String
+  fatherName  String?
+  gender      Gender?
+  category    String? // e.g. General, OBC, SC, ST
+  department  String // e.g. "Computer Science and Engineering"
+  course      String // e.g. "B.Tech", "M.Tech", "PhD"
+  batch       String? // e.g. "2023"
+  hostel      String?
+  roomNo      String?
+  phone       String?
+  email       String?
+  address     String? // Present address
+  feesPaid    Boolean  @default(false)
+  joiningYear String? // e.g. "2023-24"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  applications NocApplication[]
+}
+
+model NocOfficer {
+  id        Int         @id @default(autoincrement())
+  name      String
+  email     String      @unique
+  role      OfficerRole
+  course    String? // e.g. "B.Tech", "M.Tech", "PhD" — null for AR (handles all)
+  batch     String? // null for JS and AR
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  actions NocAction[]
+}
+
+model NocApplication {
+  id              Int               @id @default(autoincrement())
+  studentId       Int
+  certificateType CertificateType
+  purpose         String // Detailed purpose text
+  otherDetails    String? // If type is OTHER, describe what
+  status          ApplicationStatus @default(PENDING_ADMIN)
+  place           String            @default("IIT Ropar")
+  applicationDate DateTime          @default(now())
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  student     NocStudent      @relation(fields: [studentId], references: [id])
+  actions     NocAction[]
+  certificate NocCertificate?
+}
+
+model NocAction {
+  id            Int               @id @default(autoincrement())
+  applicationId Int
+  officerId     Int
+  stage         ApplicationStatus // Which stage this action was taken at
+  action        ActionType
+  remarks       String?
+  timestamp     DateTime          @default(now())
+
+  application NocApplication @relation(fields: [applicationId], references: [id])
+  officer     NocOfficer     @relation(fields: [officerId], references: [id])
+}
+
+model NocCertificate {
+  id            Int      @id @default(autoincrement())
+  applicationId Int      @unique
+  fileNo        String? // e.g. "IITRPR/Acad-UG/..."
+  issueDate     DateTime @default(now())
+  certifiedText String // Full generated certificate body
+  signedBy      String // AR name who signed
+  academicYear  String? // e.g. "2025-26"
+  createdAt     DateTime @default(now())
+
+  application NocApplication @relation(fields: [applicationId], references: [id])
+}

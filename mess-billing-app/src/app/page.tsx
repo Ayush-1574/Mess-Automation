@@ -1,326 +1,86 @@
 'use client';
-import { BrandLogo } from '@/components/ui/BrandLogo';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { Select } from '../components/ui/Select';
+import Link from 'next/link';
 
-export default function Home() {
-  const router = useRouter();
-  const [role, setRole] = useState('student');
-  const [loginMethod, setLoginMethod] = useState<'otp' | 'password'>('password');
-  
-  // Student Auth State
-  const [studentId, setStudentId] = useState('');
-  const [studentPassword, setStudentPassword] = useState('');
-  
-  // Shared OTP State
-  const [email, setEmail] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState('');
-  const [emailPartial, setEmailPartial] = useState('');
-  
-  // Admin Auth State
-  const [adminUsername, setAdminUsername] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      if (role === 'admin') {
-        if (loginMethod === 'password') {
-          const res = await fetch('/api/auth/admin-login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: adminUsername, password: adminPassword }),
-          });
-          const data = await res.json();
-          
-          if (!res.ok) throw new Error(data.error || 'Login failed');
-          router.push('/admin/dashboard');
-        } else {
-          // Admin OTP
-          if (!otpSent) {
-            const res = await fetch('/api/auth/admin-send-otp', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email }),
-            });
-            const data = await res.json();
-            
-            if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
-            
-            setEmailPartial(data.emailPartial || 'your email');
-            setOtpSent(true);
-          } else {
-            const res = await fetch('/api/auth/admin-verify-otp', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email, otp }),
-            });
-            const data = await res.json();
-            
-            if (!res.ok) throw new Error(data.error || 'OTP Verification failed');
-            router.push('/admin/dashboard');
-          }
-        }
-      } else {
-        // Student Logic
-        if (loginMethod === 'password') {
-          const res = await fetch('/api/auth/student-login-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rollNo: studentId, password: studentPassword }),
-          });
-          const data = await res.json();
-          
-          if (!res.ok) throw new Error(data.error || 'Login failed');
-          router.push(`/student/dashboard?id=${data.studentId}`);
-        } else {
-          // Student OTP
-          if (!otpSent) {
-            const res = await fetch('/api/auth/send-otp', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email }),
-            });
-            const data = await res.json();
-            
-            if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
-            
-            setEmailPartial(data.emailPartial || 'your email');
-            setOtpSent(true);
-          } else {
-            const res = await fetch('/api/auth/verify-otp', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email, otp }),
-            });
-            const data = await res.json();
-            
-            if (!res.ok) throw new Error(data.error || 'OTP Verification failed');
-            router.push(`/student/dashboard?id=${data.studentId}`);
-          }
-        }
-      }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getButtonText = () => {
-    if (loading) return 'Processing...';
-    if (loginMethod === 'otp' && !otpSent) return 'Send OTP';
-    return 'Sign In';
-  };
-
+export default function PortalLandingPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center relative">
-      <div className="bg-white/20 backdrop-blur-2xl p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/50 w-full max-w-md relative z-10 transition-all duration-500 hover:shadow-[0_20px_50px_rgb(0,0,0,0.12)] hover:bg-white/30 hover:-translate-y-2">
-        <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/30">
-          <div className="text-left">
-            <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Mess Portal</h1>
-            <p className="text-sm text-slate-500 mt-2 font-medium">Sign in to manage your account</p>
-          </div>
-          <BrandLogo />
+    <div className="min-h-screen bg-slate-50 relative py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+      {/* Background Decor */}
+      <div className="absolute top-0 left-0 w-full h-80 bg-indigo-600 rounded-b-[4rem] z-0 overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-indigo-500 rounded-full blur-3xl opacity-50"></div>
+        <div className="absolute top-32 -left-24 w-72 h-72 bg-purple-500 rounded-full blur-3xl opacity-50"></div>
+      </div>
+
+      <div className="relative z-10 w-full max-w-5xl mx-auto">
+        <div className="text-center mb-16">
+          <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight text-white mb-4 drop-shadow-md">
+            Hostel Services Portal
+          </h1>
+          <p className="mt-4 text-indigo-100 font-medium text-lg md:text-xl max-w-2xl mx-auto drop-shadow">
+            Streamlined digital platforms for managing mess rebates and student accommodation requests
+          </p>
         </div>
 
-        {error && (
-          <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-            <span className="block sm:inline">{error}</span>
-          </div>
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+          {/* Main Mess Module Card */}
+          <Link href="/login" className="group block">
+            <div className="bg-white rounded-[2rem] shadow-xl overflow-hidden border border-slate-100 hover:shadow-2xl hover:border-indigo-200 transition-all duration-300 transform hover:-translate-y-2 h-full flex flex-col relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
+              
+              <div className="p-10 flex-grow content-center text-center items-center flex flex-col justify-center">
+                <div className="w-24 h-24 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mb-8 shadow-inner transform group-hover:rotate-6 transition-transform">
+                  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </div>
+                
+                <h2 className="text-3xl font-extrabold text-slate-800 mb-4 group-hover:text-indigo-600 transition-colors">Mess & Rebates</h2>
+                <p className="text-slate-500 font-medium text-lg leading-relaxed mb-8">
+                  Manage monthly bills, view attendance, apply for rebates, and review comprehensive financial data.
+                </p>
+                
+                <span className="inline-flex items-center text-indigo-600 font-bold text-lg bg-indigo-50 px-6 py-3 rounded-full group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                  Access Portal
+                  <svg className="w-5 h-5 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </Link>
 
-        <div className="flex gap-4 mb-6">
-          <button
-            type="button"
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${loginMethod === 'password' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white/50 text-slate-600 hover:bg-white/80'}`}
-            onClick={() => { setLoginMethod('password'); setOtpSent(false); setError(''); }}
-          >
-            Password
-          </button>
-          <button
-            type="button"
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${loginMethod === 'otp' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white/50 text-slate-600 hover:bg-white/80'}`}
-            onClick={() => { setLoginMethod('otp'); setError(''); }}
-          >
-            Email OTP
-          </button>
+          {/* Accommodation Card */}
+          <Link href="/accommodation" className="group block">
+            <div className="bg-white rounded-[2rem] shadow-xl overflow-hidden border border-slate-100 hover:shadow-2xl hover:border-emerald-200 transition-all duration-300 transform hover:-translate-y-2 h-full flex flex-col relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
+              
+              <div className="p-10 flex-grow content-center text-center items-center flex flex-col justify-center">
+                <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mb-8 shadow-inner transform group-hover:-rotate-6 transition-transform">
+                  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                
+                <h2 className="text-3xl font-extrabold text-slate-800 mb-4 group-hover:text-emerald-600 transition-colors">Accommodation</h2>
+                <p className="text-slate-500 font-medium text-lg leading-relaxed mb-8">
+                  Submit forms for temporary stays, internships, and project staffing. Verified systematically by authorities.
+                </p>
+                
+                <span className="inline-flex items-center text-emerald-600 font-bold text-lg bg-emerald-50 px-6 py-3 rounded-full group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                  Access Portal
+                  <svg className="w-5 h-5 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </Link>
+
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div>
-            <Select
-              label="Select Role"
-              value={role}
-              onChange={(val: string | number) => {
-                setRole(val as string);
-                setOtpSent(false); // reset OTP state
-                setError('');
-              }}
-              options={[
-                { label: 'Student', value: 'student' },
-                { label: 'Admin', value: 'admin' }
-              ]}
-              className="bg-white/80"
-            />
-          </div>
-
-          <div className={`transition-all duration-500 overflow-hidden ${role === 'student' ? 'max-h-96 opacity-100 scale-100' : 'max-h-0 opacity-0 scale-95'}`}>
-            {!otpSent ? (
-              <div className="space-y-4">
-                {loginMethod === 'password' ? (
-                  <>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Roll Number</label>
-                      <input
-                        type="text"
-                        value={studentId}
-                        onChange={(e) => setStudentId(e.target.value)}
-                        className="w-full border border-white/60 bg-white/60 backdrop-blur-md px-4 py-3 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 hover:border-indigo-300 focus:bg-white shadow-[0_4px_10px_rgb(0,0,0,0.03)] hover:bg-white/90 hover:shadow-md transition-all duration-300 placeholder:text-slate-400"
-                        placeholder="e.g. 2023CSB1107"
-                        required={role === 'student' && loginMethod === 'password'}
-                        disabled={loading}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Password</label>
-                      <input
-                        type="password"
-                        value={studentPassword}
-                        onChange={(e) => setStudentPassword(e.target.value)}
-                        className="w-full border border-white/60 bg-white/60 backdrop-blur-md px-4 py-3 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 hover:border-indigo-300 focus:bg-white shadow-[0_4px_10px_rgb(0,0,0,0.03)] hover:bg-white/90 hover:shadow-md transition-all duration-300 placeholder:text-slate-400"
-                        placeholder="••••••••"
-                        required={role === 'student' && loginMethod === 'password'}
-                        disabled={loading}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Email Address</label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full border border-white/60 bg-white/60 backdrop-blur-md px-4 py-3 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 hover:border-indigo-300 focus:bg-white shadow-[0_4px_10px_rgb(0,0,0,0.03)] hover:bg-white/90 hover:shadow-md transition-all duration-300 placeholder:text-slate-400"
-                      placeholder="e.g. 2023CSB1107@iitrpr.ac.in"
-                      required={role === 'student' && loginMethod === 'otp'}
-                      disabled={loading}
-                    />
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="text-sm text-green-700 font-medium bg-green-50 p-3 rounded-lg border border-green-200">
-                  OTP sent to {emailPartial}. Please check your inbox.
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Enter OTP</label>
-                  <input
-                    type="text"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    className="w-full border border-white/60 bg-white/60 backdrop-blur-md px-4 py-3 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 hover:border-indigo-300 focus:bg-white shadow-[0_4px_10px_rgb(0,0,0,0.03)] hover:bg-white/90 hover:shadow-md transition-all duration-300 placeholder:text-slate-400"
-                    placeholder="6-digit OTP"
-                    required={role === 'student' && loginMethod === 'otp'}
-                    disabled={loading}
-                    maxLength={6}
-                  />
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <button type="button" onClick={() => setOtpSent(false)} className="text-indigo-600 font-semibold hover:underline">Change Email</button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className={`transition-all duration-500 overflow-hidden ${role === 'admin' ? 'max-h-96 opacity-100 scale-100' : 'max-h-0 opacity-0 scale-95'}`}>
-             {!otpSent ? (
-               <div className="space-y-4">
-                {loginMethod === 'password' ? (
-                  <>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Username</label>
-                      <input
-                        type="text"
-                        value={adminUsername}
-                        onChange={(e) => setAdminUsername(e.target.value)}
-                        className="w-full border border-white/60 bg-white/60 backdrop-blur-md px-4 py-3 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 hover:border-indigo-300 focus:bg-white shadow-[0_4px_10px_rgb(0,0,0,0.03)] hover:bg-white/90 hover:shadow-md transition-all duration-300 placeholder:text-slate-400"
-                        placeholder="Admin Username"
-                        required={role === 'admin' && loginMethod === 'password'}
-                        disabled={loading}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Password</label>
-                      <input
-                        type="password"
-                        value={adminPassword}
-                        onChange={(e) => setAdminPassword(e.target.value)}
-                        className="w-full border border-white/60 bg-white/60 backdrop-blur-md px-4 py-3 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 hover:border-indigo-300 focus:bg-white shadow-[0_4px_10px_rgb(0,0,0,0.03)] hover:bg-white/90 hover:shadow-md transition-all duration-300 placeholder:text-slate-400"
-                        placeholder="••••••••"
-                        required={role === 'admin' && loginMethod === 'password'}
-                        disabled={loading}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Admin Email Address</label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full border border-white/60 bg-white/60 backdrop-blur-md px-4 py-3 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 hover:border-indigo-300 focus:bg-white shadow-[0_4px_10px_rgb(0,0,0,0.03)] hover:bg-white/90 hover:shadow-md transition-all duration-300 placeholder:text-slate-400"
-                      placeholder="e.g. admin@iitrpr.ac.in"
-                      required={role === 'admin' && loginMethod === 'otp'}
-                      disabled={loading}
-                    />
-                  </div>
-                )}
-              </div>
-            ) : (
-               <div className="space-y-4">
-                <div className="text-sm text-green-700 font-medium bg-green-50 p-3 rounded-lg border border-green-200">
-                  OTP sent to {emailPartial}. Please check your inbox.
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Enter OTP</label>
-                  <input
-                    type="text"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    className="w-full border border-white/60 bg-white/60 backdrop-blur-md px-4 py-3 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 hover:border-indigo-300 focus:bg-white shadow-[0_4px_10px_rgb(0,0,0,0.03)] hover:bg-white/90 hover:shadow-md transition-all duration-300 placeholder:text-slate-400"
-                    placeholder="6-digit OTP"
-                    required={role === 'admin' && loginMethod === 'otp'}
-                    disabled={loading}
-                    maxLength={6}
-                  />
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <button type="button" onClick={() => setOtpSent(false)} className="text-indigo-600 font-semibold hover:underline">Change Email</button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full mt-2 bg-indigo-600 text-white font-semibold py-3.5 rounded-xl hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transform transition-all active:scale-[0.98] shadow-md shadow-indigo-200 disabled:opacity-70 disabled:cursor-not-allowed"
-          >
-            {getButtonText()}
-          </button>
-        </form>
+        <div className="text-center mt-16 text-slate-500 font-medium pb-8 border-t border-slate-200/60 pt-8">
+          &copy; {new Date().getFullYear()} Mess & Accommodation Authorities. All rights reserved.
+        </div>
       </div>
     </div>
   );

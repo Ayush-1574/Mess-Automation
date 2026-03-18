@@ -35,11 +35,21 @@ export async function POST(request: Request) {
                 continue;
             }
 
-            const messId = messMap.get(messName.toLowerCase());
+            let messId = messMap.get(messName.toLowerCase());
             const sessionId = sessionMap.get(sessionName.toLowerCase());
 
-            if (!messId) { errors.push(`Mess not found: ${messName}`); continue; }
             if (!sessionId) { errors.push(`Session not found: ${sessionName}`); continue; }
+
+            // Create mess if it doesn't exist
+            if (!messId) {
+                const newMess = await prisma.mess.upsert({
+                    where: { name: messName },
+                    update: {},
+                    create: { name: messName },
+                });
+                messId = newMess.id;
+                messMap.set(messName.toLowerCase(), messId);
+            }
 
             const student = await prisma.student.findUnique({ where: { entryNo } });
             if (!student) { errors.push(`Student not found: ${entryNo}`); continue; }

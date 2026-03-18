@@ -6,11 +6,19 @@ import * as XLSX from 'xlsx';
 // Expected columns: RollNo, Name, FatherName, Gender, Category, Department, Course, Batch, Hostel, RoomNo, Phone, Email, Address, FeesPaid, JoiningYear
 export async function POST(request: Request) {
     try {
+        const { searchParams } = new URL(request.url);
+        const officerId = searchParams.get('officerId');
+
         const formData = await request.formData();
         const file = formData.get('file') as File;
 
         if (!file) {
             return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+        }
+
+        let officer: any = null;
+        if (officerId) {
+            officer = await nocPrisma.nocOfficer.findUnique({ where: { id: Number(officerId) } });
         }
 
         const buffer = Buffer.from(await file.arrayBuffer());
@@ -38,10 +46,28 @@ export async function POST(request: Request) {
 
             const department = String(row['Department'] || row['department'] || row['Dept'] || '').trim();
             const course = String(row['Course'] || row['course'] || row['Program'] || '').trim();
+            const batch = String(row['Batch'] || row['batch'] || '').trim() || null;
 
             if (!department || !course) {
                 errors.push(`Row ${i + 2}: Missing Department or Course for ${rollNo}`);
                 continue;
+            }
+
+            // Role-based scope restrictions
+            if (officer && officer.role === 'ADMIN_OFFICER') {
+                if (officer.course && officer.course !== course) {
+                    errors.push(`Row ${i + 2}: Unauthorized. You can only upload students for course ${officer.course}`);
+                    continue;
+                }
+                if (officer.batch && officer.batch !== batch) {
+                    errors.push(`Row ${i + 2}: Unauthorized. You can only upload students for batch ${officer.batch}`);
+                    continue;
+                }
+            } else if (officer && officer.role === 'JOINT_SUPERINTENDENT') {
+                if (officer.course && officer.course !== course) {
+                    errors.push(`Row ${i + 2}: Unauthorized. You can only upload students for course ${officer.course}`);
+                    continue;
+                }
             }
 
             // Map gender string to enum
@@ -61,7 +87,7 @@ export async function POST(request: Request) {
                 category: String(row['Category'] || row['category'] || '').trim() || null,
                 department,
                 course,
-                batch: String(row['Batch'] || row['batch'] || '').trim() || null,
+                batch,
                 hostel: String(row['Hostel'] || row['hostel'] || '').trim() || null,
                 roomNo: String(row['RoomNo'] || row['Room No'] || row['roomNo'] || '').trim() || null,
                 phone: String(row['Phone'] || row['phone'] || row['Phone Number'] || '').trim() || null,

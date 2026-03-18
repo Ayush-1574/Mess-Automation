@@ -6,11 +6,24 @@ import * as XLSX from 'xlsx';
 // Expected columns: Name, Email, Role (ADMIN_OFFICER / JOINT_SUPERINTENDENT / ASSISTANT_REGISTRAR), Course, Batch
 export async function POST(request: Request) {
     try {
+        const { searchParams } = new URL(request.url);
+        const officerId = searchParams.get('officerId');
+
         const formData = await request.formData();
         const file = formData.get('file') as File;
 
         if (!file) {
             return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+        }
+
+        let uploader: any = null;
+        if (officerId) {
+            uploader = await nocPrisma.nocOfficer.findUnique({ where: { id: Number(officerId) } });
+            
+            // Admin Officers cannot upload other officers
+            if (uploader && uploader.role === 'ADMIN_OFFICER') {
+                return NextResponse.json({ error: 'Forbidden. Admin Officers cannot upload officers.' }, { status: 403 });
+            }
         }
 
         const buffer = Buffer.from(await file.arrayBuffer());
@@ -49,6 +62,18 @@ export async function POST(request: Request) {
 
             const course = String(row['Course'] || row['course'] || '').trim() || null;
             const batch = String(row['Batch'] || row['batch'] || '').trim() || null;
+
+            // Scope restriction for Joint Superintendent
+            if (uploader && uploader.role === 'JOINT_SUPERINTENDENT') {
+                if (role !== 'ADMIN_OFFICER') {
+                    errors.push(`Row ${i + 2}: Unauthorized. You can only upload Admin Officers.`);
+                    continue;
+                }
+                if (uploader.course && uploader.course !== course) {
+                    errors.push(`Row ${i + 2}: Unauthorized. You can only upload officers for course ${uploader.course}.`);
+                    continue;
+                }
+            }
 
             try {
                 await nocPrisma.nocOfficer.upsert({

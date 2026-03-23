@@ -109,7 +109,7 @@ export default function UploadPage() {
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                         <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Expected Excel Columns</p>
                         <div className="flex flex-wrap gap-1.5">
-                            {['EntryNo', 'Name', 'Batch', 'Course', 'Hostel', 'Email', 'Address', 'MessSecurity'].map(col => (
+                            {['EntryNo', 'Name', 'Batch', 'Course', 'Hostel', 'Email', 'Address', 'Gender', 'MobileNo', 'NameInBank', 'JosaaRollNo', 'Department', 'ParentMobileNo', 'DateOfJoining', 'DateOfLeaving', 'MessSecurity'].map(col => (
                                 <span key={col} className="px-2 py-1 rounded-md bg-white border border-slate-200 text-xs font-mono font-semibold text-slate-600">{col}</span>
                             ))}
                             {includeBankDetails && ['BankAccountNo', 'BankName', 'IFSC'].map(col => (

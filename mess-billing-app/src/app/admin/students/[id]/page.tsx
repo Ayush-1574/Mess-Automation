@@ -10,7 +10,14 @@ export default function StudentDetailPage() {
     const id = params.id;
 
     const [student, setStudent] = useState<any>(null);
+    const [sessions, setSessions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [leftForm, setLeftForm] = useState({ sessionId: '', leaveDate: new Date().toISOString().split('T')[0] });
+    const [savingLeft, setSavingLeft] = useState(false);
+
+    useEffect(() => {
+        fetch('/api/sessions').then(r => r.json()).then(d => setSessions(Array.isArray(d) ? d : []));
+    }, []);
 
     useEffect(() => {
         if (id) {
@@ -27,6 +34,42 @@ export default function StudentDetailPage() {
 
     const totalFees = student.feesDeposited?.reduce((s: number, f: any) => s + f.amount, 0) || 0;
     const totalRebateDays = student.monthlyRebates?.reduce((s: number, r: any) => s + r.rebateDays, 0) || 0;
+
+    const refreshStudent = () => {
+        if (id) {
+            fetch(`/api/student/${id}`).then(res => res.json()).then(data => setStudent(data)).catch(console.error);
+        }
+    };
+
+    const handleSaveLeftRecord = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSavingLeft(true);
+        try {
+            const res = await fetch('/api/student-left', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentId: student.id, sessionId: leftForm.sessionId, leaveDate: leftForm.leaveDate })
+            });
+            if (res.ok) {
+                setLeftForm({ sessionId: '', leaveDate: new Date().toISOString().split('T')[0] });
+                refreshStudent();
+            } else {
+                alert('Failed to save leave record');
+            }
+        } finally {
+            setSavingLeft(false);
+        }
+    };
+
+    const handleDeleteLeftRecord = async (recordId: number) => {
+        if (!confirm('Remove this leave record?')) return;
+        await fetch('/api/student-left', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: recordId })
+        });
+        refreshStudent();
+    };
 
     return (
         <div className="max-w-5xl mx-auto space-y-6 pb-12 animate-in fade-in duration-500">
@@ -84,7 +127,14 @@ export default function StudentDetailPage() {
                         { label: 'Course', value: student.course?.name },
                         { label: 'Hostel', value: student.hostel },
                         { label: 'Email', value: student.email },
+                        { label: 'Mobile No', value: student.mobileNo },
+                        { label: 'Parent Mobile', value: student.parentMobileNo },
                         { label: 'Address', value: student.address },
+                        { label: 'Gender', value: student.gender },
+                        { label: 'Department', value: student.department },
+                        { label: 'JoSAA Roll No', value: student.josaaRollNo },
+                        { label: 'Date of Joining', value: student.dateOfJoining ? new Date(student.dateOfJoining).toLocaleDateString('en-GB') : null },
+                        { label: 'Date of Leaving', value: student.dateOfLeaving ? new Date(student.dateOfLeaving).toLocaleDateString('en-GB') : null },
                         { label: 'Bank Editing', value: student.isBankEditable ? 'Allowed' : 'Frozen', badge: true, color: student.isBankEditable ? 'emerald' : 'rose' },
                     ].map(({ label, value, badge, color }) => (
                         <div key={label} className="flex justify-between items-center py-2 border-b border-slate-50">
@@ -107,8 +157,9 @@ export default function StudentDetailPage() {
                 <h2 className="text-lg font-bold text-slate-900 mb-5 flex items-center gap-2">
                     <span className="w-2 h-6 bg-slate-400 rounded-full"></span>Bank Details
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {[
+                        { label: 'Name in Bank', value: student.nameInBank },
                         { label: 'Account Number', value: student.bankAccountNo },
                         { label: 'Bank Name', value: student.bankName },
                         { label: 'IFSC Code', value: student.ifsc },
@@ -119,6 +170,60 @@ export default function StudentDetailPage() {
                         </div>
                     ))}
                 </div>
+            </Card>
+
+            {/* Leave Records */}
+            <Card className="p-6">
+                <h2 className="text-lg font-bold text-slate-900 mb-5 flex items-center gap-2">
+                    <span className="w-2 h-6 bg-rose-500 rounded-full"></span>Session Leave Records
+                </h2>
+                <div className="flex flex-col md:flex-row gap-6 mb-6">
+                    <form onSubmit={handleSaveLeftRecord} className="flex-1 flex gap-3 items-end">
+                        <div className="flex-1">
+                            <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Session</label>
+                            <select value={leftForm.sessionId} onChange={e => setLeftForm(p => ({ ...p, sessionId: e.target.value }))} required
+                                className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-rose-500/50">
+                                <option value="">Select session</option>
+                                {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="flex-1">
+                            <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Leave Date</label>
+                            <input type="date" value={leftForm.leaveDate} onChange={e => setLeftForm(p => ({ ...p, leaveDate: e.target.value }))} required
+                                className="w-full border border-slate-200 bg-slate-50/50 px-4 py-2.5 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-rose-500/50" />
+                        </div>
+                        <button type="submit" disabled={savingLeft || !leftForm.sessionId}
+                            className="bg-rose-600 text-white font-bold px-6 py-2.5 rounded-xl hover:bg-rose-700 transition-colors disabled:opacity-50">
+                            {savingLeft ? 'Saving...' : 'Mark as Left'}
+                        </button>
+                    </form>
+                </div>
+                {student.leftRecords?.length > 0 ? (
+                    <div className="border border-slate-100 rounded-xl overflow-hidden">
+                        <table className="min-w-full text-sm">
+                            <thead>
+                                <tr className="bg-slate-50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                                    <th className="p-3 text-left">Session</th>
+                                    <th className="p-3 text-left">Leave Date</th>
+                                    <th className="p-3 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-slate-700">
+                                {student.leftRecords.map((lr: any) => (
+                                    <tr key={lr.id} className="hover:bg-slate-50">
+                                        <td className="p-3 font-bold">{lr.session?.name || '-'}</td>
+                                        <td className="p-3">{new Date(lr.leaveDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                                        <td className="p-3 text-right">
+                                            <button onClick={() => handleDeleteLeftRecord(lr.id)} className="text-rose-600 hover:text-rose-800 font-bold text-xs bg-rose-50 px-3 py-1.5 rounded-lg hover:bg-rose-100 transition-colors">Remove</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div className="text-sm text-slate-500 font-medium bg-slate-50 p-4 rounded-xl text-center border border-slate-100">No leave records registered for this student.</div>
+                )}
             </Card>
 
             {/* Mess Assignments */}

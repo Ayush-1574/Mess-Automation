@@ -14,9 +14,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
                 where: { id: Number(id) },
                 include: {
                     course: true,
-                    messAssignments: { include: { mess: true, session: true } },
                     monthlyRebates: { include: { session: true }, orderBy: [{ year: 'desc' }, { month: 'desc' }] },
                     feesDeposited: { include: { session: true }, orderBy: { paymentDate: 'desc' } },
+                    leftRecords: { include: { session: true } },
                 },
             });
         }
@@ -26,9 +26,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
                 where: { entryNo: id },
                 include: {
                     course: true,
-                    messAssignments: { include: { mess: true, session: true } },
                     monthlyRebates: { include: { session: true }, orderBy: [{ year: 'desc' }, { month: 'desc' }] },
                     feesDeposited: { include: { session: true }, orderBy: { paymentDate: 'desc' } },
+                    leftRecords: { include: { session: true } },
                 },
             });
         }

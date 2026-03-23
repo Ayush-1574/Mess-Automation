@@ -9,12 +9,19 @@ function daysInMonth(month: number, year: number): number {
     return new Date(year, month, 0).getDate();
 }
 
+function getYearForMonth(month: number, startYear: number, semester: string): number {
+    if (semester === 'I') return month >= 7 ? startYear : startYear + 1;
+    return month <= 6 ? startYear : startYear - 1;
+}
+
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
         const sessionId = searchParams.get('sessionId');
         const monthParam = searchParams.get('month'); // number 1-12 or "all"
         const yearParam = searchParams.get('year');
+        const colsParam = searchParams.get('cols');
+        const allowedCols = colsParam ? new Set(colsParam.split(',')) : null;
 
         if (!sessionId) {
             return NextResponse.json({ error: 'sessionId is required' }, { status: 400 });
@@ -32,19 +39,26 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Invalid month' }, { status: 400 });
         }
 
+        const session = await prisma.session.findUnique({ where: { id: sessionIdNum } });
+        const messRates = await prisma.messRate.findMany({
+            where: { sessionId: sessionIdNum },
+        });
+
         // Determine which months to include
         let months: number[];
         if (isAllMonths) {
-            // Find all months that have rebate data in this session
-            const distinctMonths = await prisma.monthlyRebate.findMany({
+            const monthsSet = new Set<number>();
+            const distinctRebates = await prisma.monthlyRebate.findMany({
                 where: { sessionId: sessionIdNum },
                 distinct: ['month'],
                 select: { month: true },
-                orderBy: { month: 'asc' },
             });
-            months = distinctMonths.map((r) => r.month);
+            distinctRebates.forEach(r => monthsSet.add(r.month));
+            messRates.forEach(mr => monthsSet.add(mr.month));
+            
+            months = Array.from(monthsSet).sort((a, b) => a - b);
             if (months.length === 0) {
-                return NextResponse.json({ error: 'No rebate data found for this session' }, { status: 404 });
+                return NextResponse.json({ error: 'No billing data found for this session' }, { status: 404 });
             }
         } else {
             months = [singleMonth!];
@@ -71,13 +85,11 @@ export async function GET(request: Request) {
                 refunds: {
                     where: { sessionId: sessionIdNum },
                 },
+                leftRecords: {
+                    where: { sessionId: sessionIdNum },
+                },
             },
             orderBy: { entryNo: 'asc' },
-        });
-
-        // Fetch all MessRates for this session at once
-        const messRates = await prisma.messRate.findMany({
-            where: { sessionId: sessionIdNum },
         });
 
         const totalFeesMap = new Map<number, number>();
@@ -91,16 +103,32 @@ export async function GET(request: Request) {
 
         for (const month of months) {
             const monthYear = isAllMonths
-                ? (await prisma.monthlyRebate.findFirst({ where: { sessionId: sessionIdNum, month }, select: { year: true } }))?.year ?? year
-                : year;
+                ? (session ? getYearForMonth(month, session.startYear, session.semester) : year)
+                : (session ? getYearForMonth(month, session.startYear, session.semester) : year);
 
-            const days = daysInMonth(month, monthYear);
+            const globalDays = daysInMonth(month, monthYear);
 
             const rows = students.map((student) => {
                 const assignment = student.messAssignments[0];
                 const rebate = student.monthlyRebates.find((r) => r.month === month);
-                const rebateDays = rebate?.rebateDays ?? 0;
-                const chargeableDays = days - rebateDays;
+                let rebateDays = rebate?.rebateDays ?? 0;
+                let studentDays = globalDays;
+
+                const leftRecord = student.leftRecords?.[0];
+                if (leftRecord) {
+                    const lDate = new Date(leftRecord.leaveDate);
+                    const lMonth = lDate.getMonth() + 1;
+                    const lYear = lDate.getFullYear();
+
+                    if (monthYear > lYear || (monthYear === lYear && month > lMonth)) {
+                        studentDays = 0;
+                        rebateDays = 0;
+                    } else if (monthYear === lYear && month === lMonth) {
+                        studentDays = lDate.getDate();
+                    }
+                }
+
+                const chargeableDays = Math.max(0, studentDays - rebateDays);
 
                 // Find the rate for this student's mess, course, session, month
                 const rate = messRates.find(
@@ -116,24 +144,36 @@ export async function GET(request: Request) {
                 const totalFees = totalFeesMap.get(student.id) ?? 0;
                 const totalRefunds = totalRefundsMap.get(student.id) ?? 0;
 
-                return {
+                const row: any = {
                     'Entry No': student.entryNo,
                     'Name': student.name,
-                    'Course': student.course?.name ?? '-',
-                    'Hostel': student.hostel ?? '-',
-                    'Mess': assignment?.mess?.name ?? '-',
-                    'Month': MONTH_NAMES[month - 1],
-                    'Year': monthYear,
-                    'Days in Month': days,
-                    'Rebate Days': rebateDays,
-                    'Chargeable Days': chargeableDays,
-                    'Daily Rate (₹)': dailyRate,
-                    'GST (%)': gst,
-                    'Amount (₹)': parseFloat(amount.toFixed(2)),
-                    'Total Fees Deposited (₹)': parseFloat(totalFees.toFixed(2)),
-                    'Total Refunds (₹)': parseFloat(totalRefunds.toFixed(2)),
-                    'Net Balance (₹)': parseFloat((totalFees - (amount + totalRefunds)).toFixed(2)),
                 };
+
+                if (!allowedCols || allowedCols.has('Gender')) row['Gender'] = student.gender ?? '-';
+                if (!allowedCols || allowedCols.has('Mobile No')) row['Mobile No'] = student.mobileNo ?? '-';
+                if (!allowedCols || allowedCols.has('Name in Bank')) row['Name in Bank'] = student.nameInBank ?? '-';
+                if (!allowedCols || allowedCols.has('JoSAA Roll No')) row['JoSAA Roll No'] = student.josaaRollNo ?? '-';
+                if (!allowedCols || allowedCols.has('Department')) row['Department'] = student.department ?? '-';
+                if (!allowedCols || allowedCols.has('Parent Mobile No')) row['Parent Mobile No'] = student.parentMobileNo ?? '-';
+                if (!allowedCols || allowedCols.has('Date of Joining')) row['Date of Joining'] = student.dateOfJoining ? new Date(student.dateOfJoining).toLocaleDateString('en-GB') : '-';
+                if (!allowedCols || allowedCols.has('Date of Leaving')) row['Date of Leaving'] = student.dateOfLeaving ? new Date(student.dateOfLeaving).toLocaleDateString('en-GB') : '-';
+                if (!allowedCols || allowedCols.has('Course')) row['Course'] = student.course?.name ?? '-';
+                if (!allowedCols || allowedCols.has('Hostel')) row['Hostel'] = student.hostel ?? '-';
+                if (!allowedCols || allowedCols.has('Mess')) row['Mess'] = assignment?.mess?.name ?? '-';
+
+                row['Month'] = MONTH_NAMES[month - 1];
+                row['Year'] = monthYear;
+                row['Days in Month'] = studentDays;
+                if (!allowedCols || allowedCols.has('Rebate Days')) row['Rebate Days'] = rebateDays;
+                row['Chargeable Days'] = chargeableDays;
+                row['Daily Rate (₹)'] = dailyRate;
+                row['GST (%)'] = gst;
+                row['Amount (₹)'] = parseFloat(amount.toFixed(2));
+                row['Total Fees Deposited (₹)'] = parseFloat(totalFees.toFixed(2));
+                row['Total Refunds (₹)'] = parseFloat(totalRefunds.toFixed(2));
+                row['Net Balance (₹)'] = parseFloat((totalFees - (amount + totalRefunds)).toFixed(2));
+
+                return row;
             });
 
             const sheetName = isAllMonths

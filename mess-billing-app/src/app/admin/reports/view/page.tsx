@@ -2,6 +2,25 @@
 import { useState, useEffect } from 'react';
 import { Card } from '../../../../components/ui/Card';
 
+const AVAILABLE_COLUMNS = [
+    { key: 'Course', label: 'Course' },
+    { key: 'Hostel', label: 'Hostel' },
+    { key: 'Mess', label: 'Mess' },
+    { key: 'Mess Security', label: 'Mess Security' },
+    { key: 'Address', label: 'Address' },
+    { key: 'Gender', label: 'Gender' },
+    { key: 'Mobile No', label: 'Mobile No' },
+    { key: 'Parent Mobile No', label: 'Parent Mobile' },
+    { key: 'Date of Joining', label: 'Date of Joining' },
+    { key: 'Date of Leaving', label: 'Date of Leaving' },
+    { key: 'Department', label: 'Department' },
+    { key: 'JoSAA Roll No', label: 'JoSAA Roll No' },
+    { key: 'Bank Account No', label: 'Bank Account No' },
+    { key: 'Bank Name', label: 'Bank Name' },
+    { key: 'IFSC', label: 'IFSC Code' },
+    { key: 'Rebate Days', label: 'Rebate Days (Per Month)' },
+];
+
 export default function ConsolidatedViewPage() {
     const [reportData, setReportData] = useState<any[]>([]);
     const [columns, setColumns] = useState<string[]>([]);
@@ -9,6 +28,8 @@ export default function ConsolidatedViewPage() {
     const [selectedSession, setSelectedSession] = useState('');
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCols, setSelectedCols] = useState<Set<string>>(new Set(AVAILABLE_COLUMNS.map(c => c.key)));
+    const [showColDropdown, setShowColDropdown] = useState(false);
 
     useEffect(() => {
         fetch('/api/sessions').then(r => r.json()).then(d => setSessions(Array.isArray(d) ? d : []));
@@ -43,11 +64,18 @@ export default function ConsolidatedViewPage() {
         (item['Entry No'] || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const displayColumns = columns.filter(c => {
+        if (['Entry No', 'Name'].includes(c)) return true;
+        if (c.includes('Amount') || c.includes('Balance') || c.includes('Fees') || c.includes('Refund')) return true;
+        if (c.includes('Rebate Days')) return selectedCols.has('Rebate Days');
+        return selectedCols.has(c);
+    });
+
     const handleExport = () => {
-        if (!columns.length) return;
+        if (!displayColumns.length) return;
         const csv = [
-            columns.map(c => `"${c}"`).join(','),
-            ...filteredData.map(row => columns.map(c => `"${row[c] ?? ''}"`).join(','))
+            displayColumns.map(c => `"${c}"`).join(','),
+            ...filteredData.map(row => displayColumns.map(c => `"${row[c] ?? ''}"`).join(','))
         ].join('\n');
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -83,6 +111,48 @@ export default function ConsolidatedViewPage() {
                     )}
 
                     {selectedSession && (
+                        <div className="relative">
+                            <button onClick={() => setShowColDropdown(!showColDropdown)}
+                                className="bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl hover:bg-slate-50 font-medium text-sm transition-all flex items-center gap-2 shadow-sm">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                                Columns
+                            </button>
+                            {showColDropdown && (
+                                <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-4 animate-in fade-in slide-in-from-top-2">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h3 className="text-xs font-bold text-slate-800 uppercase">Visible Columns</h3>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => setSelectedCols(new Set(AVAILABLE_COLUMNS.map(c => c.key)))} className="text-[10px] uppercase font-bold text-indigo-600 hover:text-indigo-800">All</button>
+                                            <span className="text-slate-300">|</span>
+                                            <button onClick={() => setSelectedCols(new Set())} className="text-[10px] uppercase font-bold text-slate-500 hover:text-slate-800">Clear</button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                                        {AVAILABLE_COLUMNS.map(col => {
+                                            const isChecked = selectedCols.has(col.key);
+                                            return (
+                                                <label key={col.key} className="flex items-center gap-3 cursor-pointer group">
+                                                    <div className="relative flex items-center">
+                                                        <input type="checkbox" className="peer sr-only" checked={isChecked} onChange={(e) => {
+                                                            const newSet = new Set(selectedCols);
+                                                            if (e.target.checked) newSet.add(col.key); else newSet.delete(col.key);
+                                                            setSelectedCols(newSet);
+                                                        }} />
+                                                        <div className="w-4 h-4 border-2 border-slate-300 rounded peer-checked:bg-indigo-600 peer-checked:border-indigo-600 flex items-center justify-center transition-colors">
+                                                            <svg className={`w-2.5 h-2.5 text-white ${isChecked ? 'block' : 'hidden'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                                                        </div>
+                                                    </div>
+                                                    <span className={`text-sm tracking-tight ${isChecked ? 'text-slate-800 font-medium' : 'text-slate-500 group-hover:text-slate-700'}`}>{col.label}</span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {selectedSession && (
                         <button onClick={handleExport}
                             className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2.5 rounded-xl hover:bg-emerald-100 font-semibold text-sm transition-all flex items-center gap-2 shadow-sm">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
@@ -113,7 +183,7 @@ export default function ConsolidatedViewPage() {
                         <table className="min-w-full text-left border-collapse text-sm whitespace-nowrap">
                             <thead>
                                 <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                                    {columns.map(c => {
+                                    {displayColumns.map(c => {
                                         // Auto-color the headers to make them readable
                                         const isRebate = c.includes('Rebate');
                                         const isAmount = c.includes('Amount');
@@ -137,7 +207,7 @@ export default function ConsolidatedViewPage() {
                             <tbody className="divide-y divide-slate-100">
                                 {filteredData.map((row, idx) => (
                                     <tr key={row.id || idx} className="hover:bg-slate-50/80 transition-colors">
-                                        {columns.map((c, colIdx) => {
+                                        {displayColumns.map((c, colIdx) => {
                                             const val = row[c];
                                             const isSummary = c.startsWith('Total') || c.includes('Balance');
                                             const isBal = c.includes('Balance');
@@ -163,7 +233,7 @@ export default function ConsolidatedViewPage() {
                                 ))}
                                 {filteredData.length === 0 && (
                                     <tr>
-                                        <td colSpan={columns.length || 10} className="p-8 text-center text-slate-500">
+                                        <td colSpan={displayColumns.length || 10} className="p-8 text-center text-slate-500">
                                             <p className="text-lg font-medium text-slate-700">No records found matching search</p>
                                         </td>
                                     </tr>

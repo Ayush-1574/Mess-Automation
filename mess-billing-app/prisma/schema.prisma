@@ -35,6 +35,7 @@ model Session {
   messRates        MessRate[]
   feesDeposited    FeesDeposited[]
   refunds          Refund[]
+  leftRecords      StudentLeft[]
 }
 
 model Student {
@@ -48,6 +49,14 @@ model Student {
   resetToken     String?  // random token for password reset
   resetTokenExp  DateTime? // token expiry time
   address        String?
+  gender         String?
+  mobileNo       String?
+  nameInBank     String?
+  josaaRollNo    String?
+  department     String?
+  parentMobileNo String?
+  dateOfJoining  DateTime?
+  dateOfLeaving  DateTime?
   messSecurity   Float    @default(0)
   bankAccountNo  String?
   bankName       String?
@@ -66,6 +75,7 @@ model Student {
   monthlyRebates   MonthlyRebate[]
   feesDeposited    FeesDeposited[]
   refunds          Refund[]
+  leftRecords      StudentLeft[]
 }
 
 model Mess {
@@ -142,4 +152,17 @@ model Refund {
 
   student     Student  @relation(fields: [studentId], references: [id])
   session     Session  @relation(fields: [sessionId], references: [id])
+}
+
+model StudentLeft {
+  id          Int      @id @default(autoincrement())
+  studentId   Int
+  sessionId   Int
+  leaveDate   DateTime
+  createdAt   DateTime @default(now())
+
+  student     Student  @relation(fields: [studentId], references: [id])
+  session     Session  @relation(fields: [sessionId], references: [id])
+
+  @@unique([studentId, sessionId])
 }

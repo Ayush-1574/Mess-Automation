@@ -2,6 +2,16 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import * as XLSX from 'xlsx';
 
+const parseDate = (val: any) => {
+    if (!val) return undefined;
+    if (typeof val === 'number') {
+        const unixTime = (val - 25569) * 86400 * 1000;
+        return new Date(unixTime);
+    }
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? undefined : d;
+};
+
 export async function POST(request: Request) {
     try {
         const formData = await request.formData();
@@ -70,6 +80,14 @@ export async function POST(request: Request) {
                         hostelId: hostelId ?? undefined,
                         email: row.Email ?? undefined,
                         address: row.Address ? String(row.Address) : undefined,
+                        gender: row.Gender ? String(row.Gender) : undefined,
+                        mobileNo: row.MobileNo ? String(row.MobileNo) : undefined,
+                        nameInBank: row.NameInBank ? String(row.NameInBank) : undefined,
+                        josaaRollNo: row.JosaaRollNo ? String(row.JosaaRollNo) : undefined,
+                        department: row.Department ? String(row.Department) : undefined,
+                        parentMobileNo: row.ParentMobileNo ? String(row.ParentMobileNo) : undefined,
+                        dateOfJoining: parseDate(row.DateOfJoining),
+                        dateOfLeaving: parseDate(row.DateOfLeaving),
                         messSecurity: row.MessSecurity ? Number(row.MessSecurity) : undefined,
                         ...(includeBankDetails ? {
                             bankAccountNo: row.BankAccountNo ? String(row.BankAccountNo) : undefined,
@@ -86,6 +104,14 @@ export async function POST(request: Request) {
                         hostelId: hostelId ?? undefined,
                         email: row.Email ?? undefined,
                         address: row.Address ? String(row.Address) : undefined,
+                        gender: row.Gender ? String(row.Gender) : undefined,
+                        mobileNo: row.MobileNo ? String(row.MobileNo) : undefined,
+                        nameInBank: row.NameInBank ? String(row.NameInBank) : undefined,
+                        josaaRollNo: row.JosaaRollNo ? String(row.JosaaRollNo) : undefined,
+                        department: row.Department ? String(row.Department) : undefined,
+                        parentMobileNo: row.ParentMobileNo ? String(row.ParentMobileNo) : undefined,
+                        dateOfJoining: parseDate(row.DateOfJoining),
+                        dateOfLeaving: parseDate(row.DateOfLeaving),
                         messSecurity: row.MessSecurity ? Number(row.MessSecurity) : 0,
                         ...(includeBankDetails ? {
                             bankAccountNo: row.BankAccountNo ? String(row.BankAccountNo) : null,

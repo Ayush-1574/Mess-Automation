@@ -13,28 +13,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
     }
 
-    let applicant = await prisma.accommodationApplicant.findUnique({
+    // Use the Student model (AccommodationRequest.applicant references Student)
+    let student = await prisma.student.findUnique({
       where: { email },
     });
 
-    if (!applicant) {
-       // Auto-register feature for easy testing
-       applicant = await prisma.accommodationApplicant.create({
+    if (!student) {
+       // Auto-register: create a Student record for the applicant
+       // Generate a temporary roll number from email
+       const rollNo = `ACC-${email.split('@')[0].toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+       student = await prisma.student.create({
           data: {
              email,
              name: email.split('@')[0],
-             password
+             password,
+             rollNo,
           }
        });
     } else {
-       if (applicant.password !== password) {
+       if (student.password && student.password !== password) {
           return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+       }
+       // If the student has no password set, allow login and set it
+       if (!student.password) {
+          await prisma.student.update({
+             where: { id: student.id },
+             data: { password },
+          });
        }
     }
 
     const sessionData = {
-      id: applicant.id,
-      email: applicant.email,
+      id: student.id,
+      email: student.email,
       role: 'accommodation_applicant',
     };
 
@@ -49,7 +60,7 @@ export async function POST(req: NextRequest) {
       maxAge: 60 * 60 * 24 * 7, // 1 week
     });
 
-    return NextResponse.json({ success: true, applicantId: applicant.id });
+    return NextResponse.json({ success: true, applicantId: student.id });
   } catch (err: any) {
     console.error("Applicant Login Error:", err);
     return NextResponse.json({ error: "An unexpected error occurred." }, { status: 500 });

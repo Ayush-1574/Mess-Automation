@@ -30,18 +30,7 @@ export default function PortalLandingPage() {
       status: 'Active',
       statusColor: 'bg-emerald-100 text-emerald-700',
     },
-    {
-    name: 'Accommodation Forms',
-    description: 'Apply for guest stay, internships, and temporary accommodation requests.',
-    path: '/accommodation/forms',
-    color: 'blue',
-    iconBg: 'bg-blue-50',
-    iconColor: 'text-blue-600',
-    borderHover: 'hover:border-blue-300',
-    icon: 'M12 8c-3.866 0-7 1.343-7 3v5h14v-5c0-1.657-3.134-3-7-3zm0-2a2 2 0 100-4 2 2 0 000 4z',
-    status: 'Active',
-    statusColor: 'bg-blue-100 text-blue-700',
-  }
+   
   ];
 
   return (
@@ -77,10 +66,10 @@ export default function PortalLandingPage() {
           <Link href="/accommodation" className="group">
             <div className="bg-white p-8 rounded-2xl shadow hover:shadow-xl transition">
               <h2 className="text-2xl font-bold mb-2 group-hover:text-emerald-600">
-                Accommodation
+                Accommodation Forms
               </h2>
               <p className="text-slate-500">
-                Submit and track accommodation requests.
+                Apply for internships and temporary accomodation for stay
               </p>
             </div>
           </Link>

@@ -226,7 +226,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "C:\\Users\\vishwan Goud\\OneDrive\\Documents\\DEP\\fourth\\Mess-Automation\\mess-billing-app\\src\\generated\\noc-client",
+      "value": "C:\\Users\\ayush\\Mess-Automation\\mess-billing-app\\src\\generated\\noc-client",
       "fromEnvVar": null
     },
     "config": {
@@ -240,7 +240,7 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "C:\\Users\\vishwan Goud\\OneDrive\\Documents\\DEP\\fourth\\Mess-Automation\\mess-billing-app\\prisma\\noc\\schema.prisma",
+    "sourceFilePath": "C:\\Users\\ayush\\Mess-Automation\\mess-billing-app\\prisma\\noc\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {

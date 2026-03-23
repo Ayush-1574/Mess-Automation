@@ -63,6 +63,7 @@ model Student {
   messAssignments  StudentMessAssignment[]
   monthlyRebates   MonthlyRebate[]
   feesDeposited    FeesDeposited[]
+  accommodationRequests AccommodationRequest[]
 }
 
 model Admin {
@@ -144,5 +145,48 @@ model Otp {
   email     String   @unique
   otp       String
   expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model AccommodationRequest {
+  id                     Int      @id @default(autoincrement())
+  applicantId            Int?
+  applicantType          String
+  applicantName          String
+  gender                 String
+  department             String
+  contactNo              String
+  address                String
+  mentorName             String
+  mentorEmail            String
+  arrivalDate            DateTime
+  arrivalTime            String
+  departureDate          DateTime
+  departureTime          String
+  financialSupportAmount Float?
+  category               String
+  mentorStatus           String   @default("PENDING")
+  hodStatus              String   @default("PENDING")
+  registrarStatus        String   @default("PENDING")
+  wardenStatus           String   @default("PENDING")
+  overallStatus          String   @default("PENDING")
+  
+  mentorRemarks          String?
+  hodRemarks             String?
+  registrarRemarks       String?
+  wardenRemarks          String?
+  
+  documentUrl            String?
+  createdAt              DateTime @default(now())
+
+  applicant              Student?  @relation(fields: [applicantId], references: [id])
+}
+
+model AccommodationReviewer {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  password  String
+  role      String   // FACULTY, HOD, REGISTRAR, WARDEN
   createdAt DateTime @default(now())
 }

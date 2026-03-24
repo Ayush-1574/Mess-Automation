@@ -23,8 +23,7 @@ export async function POST(req: NextRequest) {
              email,
              name: email.split('@')[0],
              password,
-             role: role as any
-          }
+             role: role as any }
        });
     } else {
        if (reviewer.password !== password) {
@@ -42,7 +41,8 @@ export async function POST(req: NextRequest) {
       id: reviewer.id,
       email: reviewer.email,
       role: 'accommodation_reviewer',
-      reviewerRole: reviewer.role
+      reviewerRole: reviewer.role,
+      department: reviewer.department
     };
 
     const sessionInfo = await encrypt(sessionData);
@@ -62,3 +62,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "An unexpected error occurred." }, { status: 500 });
   }
 }
+

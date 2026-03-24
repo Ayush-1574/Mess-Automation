@@ -79,6 +79,8 @@ export default function MentorDashboard() {
 
   const pendingRequests = requests.filter(req => req.mentorStatus === 'PENDING');
   const processedRequests = requests.filter(req => req.mentorStatus !== 'PENDING');
+  const approvedRequests = processedRequests.filter(req => req.mentorStatus === 'APPROVED');
+  const rejectedRequests = processedRequests.filter(req => req.mentorStatus === 'REJECTED');
 
   const toggleSelectAll = () => {
      if (selectedIds.length === pendingRequests.length && pendingRequests.length > 0) {
@@ -99,12 +101,9 @@ export default function MentorDashboard() {
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Faculty Mentor Portal</h1>
           <p className="text-slate-500 mt-2 font-medium">Verify internship students and project staff attached to your lab</p>
         </div>
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-          <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold text-xs">
-            {pendingRequests.length} Pending
-          </span>
-        </div>
       </div>
+
+
 
       <Card className="p-0 overflow-hidden" hoverEffect={false}>
         {loading ? (
@@ -192,9 +191,15 @@ export default function MentorDashboard() {
                         </span>
                       </td>
                       <td className="p-4 pr-8 text-right space-x-2">
-                        <Link href={`/accommodation/review/${req.id}`} className="inline-flex items-center px-4 py-2 bg-slate-50 text-slate-700 hover:bg-slate-600 hover:text-white rounded-lg text-sm font-bold transition-all border border-slate-200 hover:border-slate-600 shadow-sm">
+                        <Link href={`/accommodation/review/${req.id}`} title="Review in Detail" className="inline-flex items-center px-4 py-2 bg-slate-50 text-slate-700 hover:bg-slate-600 hover:text-white rounded-lg text-sm font-bold transition-all border border-slate-200 hover:border-slate-600 shadow-sm align-middle">
                           Review Request
                         </Link>
+                        <button onClick={() => handleAction(req.id, 'APPROVE')} title="Quick Approve" className="inline-flex items-center justify-center w-9 h-9 bg-green-50 text-green-600 hover:bg-green-500 hover:text-white rounded-lg transition-colors border border-green-200 hover:border-green-500 shadow-sm align-middle">
+                          <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                        </button>
+                        <button onClick={() => handleAction(req.id, 'REJECT')} title="Quick Reject" className="inline-flex items-center justify-center w-9 h-9 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-200 hover:border-red-500 shadow-sm align-middle">
+                          <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
                       </td>
                     </tr>
                   ))}

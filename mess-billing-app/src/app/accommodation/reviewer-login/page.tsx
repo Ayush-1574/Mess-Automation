@@ -10,8 +10,17 @@ export default function ReviewerLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('FACULTY'); // FACULTY, HOD, REGISTRAR, WARDEN
-  const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const handleRoleChange = (newRole: string) => {
+    setRole(newRole);
+    if (newRole === 'REGISTRAR') setEmail('ar@college.edu');
+    else if (newRole === 'WARDEN') setEmail('warden@college.edu');
+    else if (newRole === 'HOD') setEmail('cse_hod@college.edu');
+    else if (newRole === 'FACULTY') setEmail('smith@college.edu');
+    setPassword('password');
+  };
 
   useEffect(() => {
     // Intelligently reading the role from URL params safely
@@ -19,7 +28,7 @@ export default function ReviewerLogin() {
        const params = new URLSearchParams(window.location.search);
        const roleParam = params.get('role');
        if (roleParam && ['FACULTY', 'HOD', 'REGISTRAR', 'WARDEN'].includes(roleParam)) {
-          setRole(roleParam);
+          handleRoleChange(roleParam);
        }
     }
   }, []);
@@ -86,7 +95,7 @@ export default function ReviewerLogin() {
              <label className="block text-sm font-bold text-slate-700 mb-1.5">Are you logging in as?</label>
              <select
                value={role}
-               onChange={(e) => setRole(e.target.value)}
+               onChange={(e) => handleRoleChange(e.target.value)}
                className="w-full border border-slate-200 bg-white/60 backdrop-blur-md px-4 py-3 rounded-xl text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-teal-500/50 hover:border-teal-300 shadow-[0_4px_10px_rgb(0,0,0,0.02)] transition-all duration-300"
                required
                disabled={loading}
@@ -124,6 +133,7 @@ export default function ReviewerLogin() {
              />
            </div>
 
+                      
           <button
             type="submit"
             disabled={loading}
@@ -142,3 +152,5 @@ export default function ReviewerLogin() {
     </div>
   );
 }
+
+

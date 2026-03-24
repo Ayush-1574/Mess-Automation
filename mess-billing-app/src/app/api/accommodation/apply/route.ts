@@ -40,6 +40,14 @@ export async function POST(req: NextRequest) {
        documentUrl = `/uploads/${uniqueName}`;
     }
 
+    // Grab current session
+    const d = new Date();
+    const defaultSession = `${d.getFullYear()}-${d.getMonth() + 1}`;
+    let sessionSetting = await prisma.systemSetting.findUnique({ where: { key: 'CURRENT_ACCOMMODATION_SESSION' } });
+    if (!sessionSetting) {
+      sessionSetting = await prisma.systemSetting.create({ data: { key: 'CURRENT_ACCOMMODATION_SESSION', value: defaultSession } });
+    }
+
     const newRequest = await prisma.accommodationRequest.create({
       data: {
         applicantId: session.id,
@@ -57,7 +65,8 @@ export async function POST(req: NextRequest) {
         departureTime: formData.get("departureTime") as string,
         financialSupportAmount: formData.get("financialSupportAmount") ? parseFloat(formData.get("financialSupportAmount") as string) : null,
         category: (formData.get("category") as string) || 'A',
-        documentUrl: documentUrl
+        documentUrl: documentUrl,
+        session: sessionSetting.value
       },
       include: {
         applicant: true

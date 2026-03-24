@@ -1,18 +1,21 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card } from '../../../../components/ui/Card';
 
 const AVAILABLE_COLUMNS = [
     { key: 'Course', label: 'Course' },
+    { key: 'Batch', label: 'Batch' },
     { key: 'Hostel', label: 'Hostel' },
     { key: 'Mess', label: 'Mess' },
     { key: 'Mess Security', label: 'Mess Security' },
     { key: 'Address', label: 'Address' },
     { key: 'Gender', label: 'Gender' },
     { key: 'Mobile No', label: 'Mobile No' },
+    { key: 'Name in Bank', label: 'Name in Bank' },
     { key: 'Parent Mobile No', label: 'Parent Mobile' },
     { key: 'Date of Joining', label: 'Date of Joining' },
     { key: 'Date of Leaving', label: 'Date of Leaving' },
+    { key: 'Left Date', label: 'Left Date (Session)' },
     { key: 'Department', label: 'Department' },
     { key: 'JoSAA Roll No', label: 'JoSAA Roll No' },
     { key: 'Bank Account No', label: 'Bank Account No' },
@@ -20,6 +23,82 @@ const AVAILABLE_COLUMNS = [
     { key: 'IFSC', label: 'IFSC Code' },
     { key: 'Rebate Days', label: 'Rebate Days (Per Month)' },
 ];
+
+const FILTERABLE_COLUMNS = ['Course', 'Batch', 'Hostel', 'Mess', 'Gender', 'Department', 'Bank Name'];
+
+function MultiSelectFilter({ label, options, selected, onSelectionChange }: {
+    label: string;
+    options: string[];
+    selected: Set<string>;
+    onSelectionChange: (newSet: Set<string>) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const isFiltered = selected.size > 0 && selected.size < options.length;
+    const allSelected = selected.size === 0 || selected.size === options.length;
+
+    return (
+        <div ref={ref} className="relative">
+            <button onClick={() => setOpen(!open)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all border ${isFiltered
+                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200 shadow-sm'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}>
+                {label}
+                {isFiltered && (
+                    <span className="bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">{selected.size}</span>
+                )}
+                <svg className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+            {open && (
+                <div className="absolute left-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-3 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex justify-between items-center mb-2 pb-2 border-b border-slate-100">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</span>
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => onSelectionChange(new Set(options))} className="text-[10px] uppercase font-bold text-indigo-600 hover:text-indigo-800">All</button>
+                            <span className="text-slate-300">|</span>
+                            <button onClick={() => onSelectionChange(new Set())} className="text-[10px] uppercase font-bold text-slate-500 hover:text-slate-800">Clear</button>
+                        </div>
+                    </div>
+                    <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                        {options.map(opt => {
+                            const isChecked = selected.size === 0 ? true : selected.has(opt);
+                            return (
+                                <label key={opt} className="flex items-center gap-2.5 cursor-pointer py-1 px-1 rounded-lg hover:bg-slate-50 group">
+                                    <div className="relative flex items-center">
+                                        <input type="checkbox" className="peer sr-only" checked={isChecked} onChange={(e) => {
+                                            const newSet = new Set(selected.size === 0 ? options : selected);
+                                            if (e.target.checked) newSet.add(opt); else newSet.delete(opt);
+                                            // If all selected, reset to empty (means "all")
+                                            if (newSet.size === options.length) onSelectionChange(new Set());
+                                            else onSelectionChange(newSet);
+                                        }} />
+                                        <div className="w-3.5 h-3.5 border-2 border-slate-300 rounded peer-checked:bg-indigo-600 peer-checked:border-indigo-600 flex items-center justify-center transition-colors">
+                                            <svg className={`w-2 h-2 text-white ${isChecked ? 'block' : 'hidden'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                                        </div>
+                                    </div>
+                                    <span className={`text-xs truncate ${isChecked ? 'text-slate-800 font-medium' : 'text-slate-400'}`}>{opt || '(empty)'}</span>
+                                </label>
+                            );
+                        })}
+                        {options.length === 0 && <p className="text-xs text-slate-400 text-center py-2">No values</p>}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
 
 export default function ConsolidatedViewPage() {
     const [reportData, setReportData] = useState<any[]>([]);
@@ -30,6 +109,11 @@ export default function ConsolidatedViewPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCols, setSelectedCols] = useState<Set<string>>(new Set(AVAILABLE_COLUMNS.map(c => c.key)));
     const [showColDropdown, setShowColDropdown] = useState(false);
+
+    // Filters: key = column name (e.g. 'Course'), value = Set of selected values. Empty set = all selected.
+    const [filters, setFilters] = useState<Record<string, Set<string>>>({});
+    // Balance filter: 'all' | 'positive' | 'negative'
+    const [balanceFilter, setBalanceFilter] = useState<'all' | 'positive' | 'negative'>('all');
 
     useEffect(() => {
         fetch('/api/sessions').then(r => r.json()).then(d => setSessions(Array.isArray(d) ? d : []));
@@ -43,6 +127,8 @@ export default function ConsolidatedViewPage() {
         }
 
         setLoading(true);
+        setFilters({}); // Reset filters on session change
+        setBalanceFilter('all');
         try {
             const res = await fetch(`/api/reports/consolidated-view?sessionId=${sessionId}`);
             const json = await res.json();
@@ -59,10 +145,49 @@ export default function ConsolidatedViewPage() {
 
     useEffect(() => { fetchReport(selectedSession); }, [selectedSession]);
 
-    const filteredData = reportData.filter(item =>
-        (item['Name'] || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item['Entry No'] || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Compute unique values for each filterable column from the full data
+    const filterOptions: Record<string, string[]> = {};
+    for (const col of FILTERABLE_COLUMNS) {
+        const vals = new Set<string>();
+        reportData.forEach(row => {
+            const v = row[col];
+            if (v && v !== '-') vals.add(String(v));
+        });
+        filterOptions[col] = Array.from(vals).sort();
+    }
+
+    const updateFilter = (col: string, newSet: Set<string>) => {
+        setFilters(prev => ({ ...prev, [col]: newSet }));
+    };
+
+    // Apply search + filters
+    const filteredData = reportData.filter(item => {
+        // Search filter
+        const matchesSearch =
+            (item['Name'] || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (item['Entry No'] || '').toLowerCase().includes(searchTerm.toLowerCase());
+        if (!matchesSearch) return false;
+
+        // Column filters
+        for (const col of FILTERABLE_COLUMNS) {
+            const filterSet = filters[col];
+            if (filterSet && filterSet.size > 0) {
+                const val = String(item[col] ?? '-');
+                if (!filterSet.has(val)) return false;
+            }
+        }
+
+        // Balance filter
+        if (balanceFilter !== 'all') {
+            const balance = item['Net Balance (₹)'];
+            if (typeof balance === 'number') {
+                if (balanceFilter === 'positive' && balance < 0) return false;
+                if (balanceFilter === 'negative' && balance >= 0) return false;
+            }
+        }
+
+        return true;
+    });
 
     const displayColumns = columns.filter(c => {
         if (['Entry No', 'Name'].includes(c)) return true;
@@ -84,6 +209,8 @@ export default function ConsolidatedViewPage() {
         link.href = url; link.download = 'consolidated_report.csv';
         document.body.appendChild(link); link.click(); document.body.removeChild(link);
     };
+
+    const activeFilterCount = Object.values(filters).filter(s => s.size > 0).length + (balanceFilter !== 'all' ? 1 : 0);
 
     return (
         <div className="max-w-[1400px] mx-auto space-y-6 animate-in fade-in duration-500">
@@ -166,6 +293,50 @@ export default function ConsolidatedViewPage() {
                     </a>
                 </div>
             </div>
+
+            {/* Filter Bar */}
+            {selectedSession && reportData.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                        Filters
+                    </div>
+                    {FILTERABLE_COLUMNS.map(col => (
+                        <MultiSelectFilter
+                            key={col}
+                            label={col}
+                            options={filterOptions[col] || []}
+                            selected={filters[col] || new Set()}
+                            onSelectionChange={(s) => updateFilter(col, s)}
+                        />
+                    ))}
+
+                    {/* Balance Filter */}
+                    <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden">
+                        {(['all', 'positive', 'negative'] as const).map(opt => (
+                            <button key={opt} onClick={() => setBalanceFilter(opt)}
+                                className={`px-3 py-2 text-xs font-semibold transition-colors ${
+                                    balanceFilter === opt
+                                        ? opt === 'positive' ? 'bg-emerald-100 text-emerald-700'
+                                        : opt === 'negative' ? 'bg-rose-100 text-rose-700'
+                                        : 'bg-slate-100 text-slate-700'
+                                        : 'text-slate-500 hover:bg-slate-50'
+                                }`}>
+                                {opt === 'all' ? 'All' : opt === 'positive' ? 'Bal +ve' : 'Bal −ve'}
+                            </button>
+                        ))}
+                    </div>
+
+                    {activeFilterCount > 0 && (
+                        <button onClick={() => { setFilters({}); setBalanceFilter('all'); }}
+                            className="text-xs font-bold text-rose-600 hover:text-rose-800 px-2 py-1.5 rounded-lg hover:bg-rose-50 transition-colors flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            Clear All ({activeFilterCount})
+                        </button>
+                    )}
+                    <span className="text-xs text-slate-400 font-medium ml-auto">{filteredData.length} of {reportData.length} students</span>
+                </div>
+            )}
 
             <Card className="p-0 overflow-hidden">
                 {loading ? (

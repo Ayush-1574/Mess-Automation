@@ -26,7 +26,6 @@ const ADMIN_ONLY_API_PREFIXES = [
   "/api/mess-rates",
   "/api/monthly-rebates",
   "/api/refunds",
-  "/api/sessions",
   "/api/template",
   // Deprecated
   "/api/bill",
@@ -37,6 +36,7 @@ const ADMIN_ONLY_API_PREFIXES = [
 // Student data isolation is enforced within the route handler itself
 const STUDENT_ACCESSIBLE_API_PREFIXES = [
   "/api/student/", // /api/student/{id} — own data only (enforced in handler)
+  "/api/sessions", // needed for session dropdown on student dashboard
 ];
 
 export default auth((req) => {

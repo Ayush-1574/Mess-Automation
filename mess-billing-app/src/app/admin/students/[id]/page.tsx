@@ -33,6 +33,7 @@ export default function StudentDetailPage() {
     if (!student || student.error) return <div className="p-8 text-rose-600 font-bold">Student not found.</div>;
 
     const totalFees = student.feesDeposited?.reduce((s: number, f: any) => s + f.amount, 0) || 0;
+    const totalRefunds = student.refunds?.reduce((s: number, r: any) => s + r.amount, 0) || 0;
     const totalRebateDays = student.monthlyRebates?.reduce((s: number, r: any) => s + r.rebateDays, 0) || 0;
 
     const refreshStudent = () => {
@@ -101,10 +102,14 @@ export default function StudentDetailPage() {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card className="p-5 bg-teal-50/50 border-teal-100/50">
                     <p className="text-xs font-bold text-teal-500 uppercase tracking-widest mb-1">Total Fees Deposited</p>
                     <h3 className="text-3xl font-extrabold text-teal-900">₹{totalFees.toLocaleString(undefined, { minimumFractionDigits: 0 })}</h3>
+                </Card>
+                <Card className="p-5 bg-rose-50/50 border-rose-100/50">
+                    <p className="text-xs font-bold text-rose-500 uppercase tracking-widest mb-1">Total Refunds</p>
+                    <h3 className="text-3xl font-extrabold text-rose-900">₹{totalRefunds.toLocaleString(undefined, { minimumFractionDigits: 0 })}</h3>
                 </Card>
                 <Card className="p-5 bg-orange-50/50 border-orange-100/50">
                     <p className="text-xs font-bold text-orange-500 uppercase tracking-widest mb-1">Total Rebate Days</p>
@@ -324,6 +329,39 @@ export default function StudentDetailPage() {
                     </table>
                 ) : (
                     <div className="p-8 text-center text-slate-400 font-medium">No fees recorded.</div>
+                )}
+            </Card>
+
+            {/* Refunds */}
+            <Card className="p-0 overflow-hidden">
+                <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+                    <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <span className="w-2 h-6 bg-rose-500 rounded-full"></span>Refunds
+                    </h2>
+                </div>
+                {student.refunds?.length > 0 ? (
+                    <table className="min-w-full text-sm">
+                        <thead>
+                            <tr className="bg-slate-50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                                <th className="p-4 text-left">Session</th>
+                                <th className="p-4 text-right">Amount</th>
+                                <th className="p-4 text-center">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {student.refunds.map((r: any) => (
+                                <tr key={r.id} className="hover:bg-slate-50/50">
+                                    <td className="p-4">
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-violet-50 text-violet-700 border border-violet-100">{r.session?.name || '-'}</span>
+                                    </td>
+                                    <td className="p-4 text-right font-bold text-rose-700">₹{(r.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                    <td className="p-4 text-center text-slate-600">{r.paymentDate ? new Date(r.paymentDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : (
+                    <div className="p-8 text-center text-slate-400 font-medium">No refunds recorded.</div>
                 )}
             </Card>
         </div>

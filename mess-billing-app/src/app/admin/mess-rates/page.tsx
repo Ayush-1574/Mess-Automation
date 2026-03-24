@@ -64,7 +64,7 @@ export default function MessRatesPage() {
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
             <div>
-                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Mess Rates</h1>
+                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Bill Generation</h1>
                 <p className="text-slate-500 mt-2 font-medium">Set monthly mess rates per mess, session and month.</p>
             </div>
 

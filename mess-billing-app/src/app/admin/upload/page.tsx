@@ -52,7 +52,7 @@ export default function UploadPage() {
     return (
         <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-500">
             <div>
-                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Upload Student Data</h1>
+                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Registration of Student</h1>
                 <p className="text-slate-500 mt-2 font-medium">Batch import student records using the standard Excel template.</p>
             </div>
 

@@ -90,6 +90,7 @@ export async function GET(request: Request) {
             };
 
             if (!allowedCols || allowedCols.has('Course')) row['Course'] = student.course?.name ?? '-';
+            if (!allowedCols || allowedCols.has('Batch')) row['Batch'] = student.batch ?? '-';
             if (!allowedCols || allowedCols.has('Hostel')) row['Hostel'] = student.hostelRef?.name ?? student.hostel ?? '-';
             if (!allowedCols || allowedCols.has('Mess')) row['Mess'] = assignment?.mess?.name ?? '-';
             if (!allowedCols || allowedCols.has('Mess Security')) row['Mess Security'] = student.messSecurity;
@@ -102,6 +103,7 @@ export async function GET(request: Request) {
             if (!allowedCols || allowedCols.has('Parent Mobile No')) row['Parent Mobile No'] = student.parentMobileNo ?? '-';
             if (!allowedCols || allowedCols.has('Date of Joining')) row['Date of Joining'] = student.dateOfJoining ? new Date(student.dateOfJoining).toLocaleDateString('en-GB') : '-';
             if (!allowedCols || allowedCols.has('Date of Leaving')) row['Date of Leaving'] = student.dateOfLeaving ? new Date(student.dateOfLeaving).toLocaleDateString('en-GB') : '-';
+            if (!allowedCols || allowedCols.has('Left Date')) row['Left Date'] = student.leftRecords?.[0]?.leaveDate ? new Date(student.leftRecords[0].leaveDate).toLocaleDateString('en-GB') : '-';
             if (!allowedCols || allowedCols.has('Bank Account No')) row['Bank Account No'] = student.bankAccountNo ?? '-';
             if (!allowedCols || allowedCols.has('Bank Name')) row['Bank Name'] = student.bankName ?? '-';
             if (!allowedCols || allowedCols.has('IFSC')) row['IFSC'] = student.ifsc ?? '-';
@@ -158,7 +160,7 @@ export async function GET(request: Request) {
         });
 
         // Also return the column list so the UI knows exactly what to render in order
-        const baseColumns = ['Entry No', 'Name', 'Course', 'Hostel', 'Mess', 'Mess Security', 'Address', 'Gender', 'Mobile No', 'Name in Bank', 'JoSAA Roll No', 'Department', 'Parent Mobile No', 'Date of Joining', 'Date of Leaving', 'Bank Account No', 'Bank Name', 'IFSC'];
+        const baseColumns = ['Entry No', 'Name', 'Course', 'Batch', 'Hostel', 'Mess', 'Mess Security', 'Address', 'Gender', 'Mobile No', 'Name in Bank', 'JoSAA Roll No', 'Department', 'Parent Mobile No', 'Date of Joining', 'Date of Leaving', 'Left Date', 'Bank Account No', 'Bank Name', 'IFSC'];
         const columns = baseColumns.filter(c => !allowedCols || ['Entry No', 'Name'].includes(c) || allowedCols.has(c));
 
         for (const { month, year } of distinctMonths) {
